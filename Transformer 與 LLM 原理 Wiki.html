@@ -1,0 +1,1129 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Transformer 與 LLM 原理 Wiki</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@600;900&display=swap" rel="stylesheet">
+<style>
+:root {
+  /* layout: fixed sidebar of page names, one reading column, reference panels under each page */
+  color-scheme: light;
+  --paper: #f2f5f4; --card: #ffffff; --ink: #15222b; --muted: #586973; --line: #cfd8d8;
+  --teal: #0a6f6b; --teal-soft: #d9ecea; --amber: #b86a00; --amber-soft: #fbe9c6;
+  --display: "Noto Serif TC", "Songti TC", "PMingLiU", serif;
+  --body: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif;
+  --mono: "IBM Plex Mono", "SFMono-Regular", Consolas, monospace;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--paper); color: var(--ink); font-family: var(--body); font-size: 17px; line-height: 1.75; }
+.layout { display: grid; grid-template-columns: 270px minmax(0, 1fr); min-height: 100vh; }
+aside { background: var(--ink); color: #dfe8e8; padding: 24px 18px; }
+aside .brand { font-family: var(--display); font-size: 20px; font-weight: 900; line-height: 1.35; margin: 0 0 18px; color: #fff; }
+aside a { display: block; color: #c6d3d3; text-decoration: none; padding: 4px 10px; border-radius: 4px; font-size: 15px; line-height: 1.5; }
+aside a:hover { background: #24353f; }
+aside a.cur { background: var(--teal); color: #fff; }
+aside a:focus-visible, main a:focus-visible { outline: 3px solid var(--amber); outline-offset: 2px; }
+.navgroup h2 { font-size: 12px; letter-spacing: .14em; color: #7fd1cc; margin: 18px 10px 6px; font-weight: 700; }
+main { padding: 40px 48px 80px; min-width: 0; }
+article { max-width: 46rem; }
+article[hidden] { display: none; }
+.badge { display: inline-block; font-size: 13px; letter-spacing: .1em; padding: 2px 10px; border-radius: 3px; margin: 0 0 10px; font-weight: 700; }
+.badge.concept { background: var(--teal-soft); color: var(--teal); }
+.badge.source { background: var(--amber-soft); color: #7a4500; }
+.badge.meta { background: #e3e8e8; color: var(--muted); }
+h1 { font-family: var(--display); font-size: 36px; line-height: 1.3; margin: 0 0 10px; text-wrap: balance; }
+.summary { font-size: 19px; color: var(--muted); margin: 0 0 8px; }
+.srcmeta { font-size: 15px; color: var(--muted); margin: 0; }
+.cta a { display: inline-block; background: var(--teal); color: #fff; padding: 8px 16px; border-radius: 4px; text-decoration: none; }
+.content h2 { font-family: var(--display); font-size: 24px; margin: 34px 0 8px; padding-top: 14px; border-top: 1px solid var(--line); text-wrap: balance; }
+.content p { margin: 10px 0; }
+.content ul, .content ol { padding-left: 1.3em; margin: 10px 0; }
+.content li { margin: 4px 0; }
+main a { color: var(--teal); }
+a.cite, span.cite { font-family: var(--mono); font-size: 12px; background: var(--amber-soft); color: #7a4500; border-radius: 3px; padding: 1px 5px; text-decoration: none; margin-left: 2px; vertical-align: 1px; white-space: nowrap; }
+a.wl { text-decoration-style: dotted; }
+.scroll, .content > table { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; background: var(--card); font-size: 15px; display: block; overflow-x: auto; }
+th, td { border: 1px solid var(--line); padding: 7px 10px; text-align: left; vertical-align: top; line-height: 1.55; }
+th { background: var(--teal-soft); white-space: nowrap; }
+td.num { font-family: var(--mono); font-size: 13px; white-space: nowrap; }
+.panels { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 14px; margin-top: 40px; }
+.panel { background: var(--card); border: 1px solid var(--line); border-radius: 6px; padding: 12px 16px; font-size: 15px; }
+.panel h2 { font-size: 13px; letter-spacing: .08em; color: var(--muted); margin: 0 0 6px; }
+.panel ul { margin: 0; padding-left: 1.1em; }
+.graph { display: flex; flex-direction: column; gap: 6px; margin: 14px 0; }
+.g-row { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); gap: 12px; align-items: center; }
+.g-node { background: var(--card); border: 1px solid var(--line); border-left: 6px solid var(--muted); border-radius: 4px; padding: 8px 14px; font-size: 15px; line-height: 1.5; position: relative; }
+.g-node b { display: block; font-size: 16px; }
+.g-node.loop { border-left-color: var(--teal); }
+.g-node.check { border-left-color: var(--amber); background: #fffaf0; }
+.g-row:not(:last-child) .g-node::after { content: "↓"; position: absolute; left: 18px; bottom: -17px; font-size: 13px; color: var(--muted); z-index: 1; }
+.g-back { font-size: 14px; color: var(--amber); line-height: 1.45; }
+.g-back:not(:empty)::before { content: "↩ "; }
+@media (max-width: 760px) {
+  .layout { grid-template-columns: 1fr; }
+  aside { padding: 14px 16px; }
+  aside nav { display: flex; flex-wrap: wrap; gap: 4px 6px; }
+  .navgroup { display: contents; }
+  .navgroup h2 { width: 100%; margin: 8px 0 0; }
+  aside a { padding: 2px 8px; font-size: 14px; background: #24353f; }
+  main { padding: 24px 16px 60px; }
+  h1 { font-size: 28px; }
+  .g-row { grid-template-columns: 1fr; gap: 2px; }
+}
+</style>
+</head>
+<body>
+<div class="layout">
+<aside><p class="brand">Transformer 與 LLM 原理 Wiki</p><nav><a class="home" href="#index" data-nav="index">索引</a><div class="navgroup"><h2>概念</h2><a href="#language-model" data-nav="language-model">語言模型：預測下一個 token</a><a href="#tokenization" data-nav="tokenization">Token 與 BPE 斷詞</a><a href="#embedding-position" data-nav="embedding-position">Embedding 與位置編碼</a><a href="#why-transformer" data-nav="why-transformer">為什麼 Transformer 取代了 RNN</a><a href="#self-attention" data-nav="self-attention">自注意力（Self-Attention）</a><a href="#multi-head-attention" data-nav="multi-head-attention">多頭注意力（Multi-Head Attention）</a><a href="#transformer-architecture" data-nav="transformer-architecture">Transformer 架構全貌</a><a href="#model-families" data-nav="model-families">三大模型家族：BERT、GPT、T5</a><a href="#pretraining-finetuning" data-nav="pretraining-finetuning">預訓練與微調</a><a href="#decoding" data-nav="decoding">解碼策略：從機率到文字</a></div><div class="navgroup"><h2>來源</h2><a href="#s1" data-nav="s1">S1｜Attention Is All You Need</a><a href="#s2" data-nav="s2">S2｜The Illustrated Transformer</a><a href="#s3" data-nav="s3">S3｜The Illustrated GPT-2</a><a href="#s4" data-nav="s4">S4｜Hugging Face LLM Course：How do Transformers work?</a><a href="#s5" data-nav="s5">S5｜Hugging Face LLM Course：Byte-Pair Encoding tokenization</a><a href="#s6" data-nav="s6">S6｜How to generate text（Hugging Face 部落格）</a></div><div class="navgroup"><h2>維護</h2><a href="#open-questions" data-nav="open-questions">來源之間的不一致與未解問題</a><a href="#workflow" data-nav="workflow">流程圖：這份 Wiki 與簡報是怎麼做出來的</a><a href="#log" data-nav="log">執行紀錄（2026-11-17）</a></div></nav></aside>
+<main>
+<article id="page-index" data-page="index">
+<p class="badge meta">索引</p>
+<h1>Transformer 與 LLM 原理 Wiki</h1>
+<p class="summary">一份由 LLM 維護的主題 Wiki：讀進 6 篇公開來源，整理成 10 個互相連結的概念頁，回答「一個句子如何變成下一個字」。</p>
+<p class="cta"><a href="https://claude.ai/artifact/5Kr98s8iUa5NQmZ6Zee9NU">開啟用這份 Wiki 做的教學簡報</a></p>
+<div class="content">
+<h2>這份 Wiki 怎麼組織</h2>
+<ul>
+<li><strong>來源頁（S1–S6）</strong>：每篇來源一頁，只記那篇說了什麼，以及閱讀時要注意的地方。</li>
+<li><strong>概念頁</strong>：跨來源整理的主題頁。每一行事實後面的 <span class="cite">S#</span> 可以點回來源頁。</li>
+<li><strong>維護頁</strong>：來源之間的不一致、流程圖、執行紀錄。</li>
+</ul>
+<h2>概念頁（建議閱讀順序）</h2>
+<div class="scroll"><table><tr><th>頁面</th><th>一句話</th><th>來源</th><th>簡報第幾張</th></tr><tr><td><a href="#language-model">語言模型：預測下一個 token</a></td><td>LLM 的核心工作只有一件事：根據前文，算出下一個 token 的機率，然後一個接一個寫下去。</td><td class="num">S3 S4 S6</td><td class="num">2、3、4、16、17</td></tr><tr><td><a href="#tokenization">Token 與 BPE 斷詞</a></td><td>模型看不懂文字，只看得懂編號。BPE 從字元出發，反覆合併最常見的相鄰組合，學出一套子詞詞彙。</td><td class="num">S1 S3 S5</td><td class="num">5、6、16、17</td></tr><tr><td><a href="#embedding-position">Embedding 與位置編碼</a></td><td>每個 token 先查表變成一個向量，再加上代表位置的向量，模型才同時知道「是什麼字」與「在第幾個」。</td><td class="num">S1 S2 S3</td><td class="num">7、17</td></tr><tr><td><a href="#why-transformer">為什麼 Transformer 取代了 RNN</a></td><td>RNN 必須一個字一個字依序算，慢又難記住遠處的字；注意力讓所有位置直接相連，可以平行訓練。</td><td class="num">S1</td><td class="num">8、12</td></tr><tr><td><a href="#self-attention">自注意力（Self-Attention）</a></td><td>處理每個 token 時，讓它去「看」句子裡其他 token，依相關程度加權後混合進自己的表示。</td><td class="num">S1 S2 S3 S4</td><td class="num">8、9、10、16、17</td></tr><tr><td><a href="#multi-head-attention">多頭注意力（Multi-Head Attention）</a></td><td>同時跑好幾組各自獨立的自注意力，每一組關注不同的關係，最後把結果接起來。</td><td class="num">S1 S2 S3</td><td class="num">10</td></tr><tr><td><a href="#transformer-architecture">Transformer 架構全貌</a></td><td>原始 Transformer 是 encoder 堆疊加 decoder 堆疊；每一層都是「注意力 + 前饋網路」，外面包殘差連接與正規化。</td><td class="num">S1 S2</td><td class="num">2、11、17</td></tr><tr><td><a href="#model-families">三大模型家族：BERT、GPT、T5</a></td><td>只用 encoder 的擅長理解，只用 decoder 的擅長生成，兩者都用的擅長「讀一段、寫一段」。GPT 系列屬於 decoder-only。</td><td class="num">S3 S4</td><td class="num">13</td></tr><tr><td><a href="#pretraining-finetuning">預訓練與微調</a></td><td>先用海量文字讓模型學會語言（預訓練），再用少量任務資料調整（微調）。前者昂貴，後者便宜。</td><td class="num">S2 S3 S4</td><td class="num">14</td></tr><tr><td><a href="#decoding">解碼策略：從機率到文字</a></td><td>模型只給出每個 token 的機率，「怎麼挑」是另一個決定。Greedy 穩但呆板，抽樣加上 temperature、top-k、top-p 才有變化。</td><td class="num">S1 S2 S3 S6</td><td class="num">15、16、17</td></tr></table></div>
+<h2>來源頁</h2>
+<div class="scroll"><table><tr><th>頁面</th><th>類型</th><th>用途</th></tr><tr><td><a href="#s1">S1｜Attention Is All You Need</a></td><td>論文</td><td>2017 年提出 Transformer 的原始論文，是架構、公式與實驗數字的第一手來源。</td></tr><tr><td><a href="#s2">S2｜The Illustrated Transformer</a></td><td>部落格文章</td><td>Jay Alammar 的圖解文章，用翻譯例子一步步拆解原始 Transformer，是直覺與例子的主要來源。</td></tr><tr><td><a href="#s3">S3｜The Illustrated GPT-2</a></td><td>部落格文章</td><td>Jay Alammar 圖解 GPT-2，說明 decoder-only 模型如何一次生成一個 token，是「LLM 怎麼寫字」的主要來源。</td></tr><tr><td><a href="#s4">S4｜Hugging Face LLM Course：How do Transformers work?</a></td><td>線上課程</td><td>Hugging Face 課程第 1 章第 4 節，提供模型家族、預訓練與微調、名詞定義等全景觀念。</td></tr><tr><td><a href="#s5">S5｜Hugging Face LLM Course：Byte-Pair Encoding tokenization</a></td><td>線上課程</td><td>Hugging Face 課程第 6 章第 5 節，用玩具語料示範 BPE 如何學出子詞詞彙。</td></tr><tr><td><a href="#s6">S6｜How to generate text（Hugging Face 部落格）</a></td><td>部落格文章</td><td>介紹 greedy、beam search、抽樣、temperature、top-k、top-p 等解碼方法與各自的優缺點。</td></tr></table></div>
+<h2>維護頁</h2>
+<ul><li><a href="#open-questions">來源之間的不一致與未解問題</a>：ingest 過程中發現的矛盾、缺漏與 Wiki 的處理方式。寫簡報前先看這頁。</li><li><a href="#workflow">流程圖：這份 Wiki 與簡報是怎麼做出來的</a>：從討論、取得資料、ingest、lint，到查詢 Wiki、生成簡報、檢查、發布的完整 graph，以及哪些邊會往回走。</li><li><a href="#log">執行紀錄（2026-11-17）</a>：這一次實際執行的逐步紀錄：ingest 了什麼、每次檢查的結果、發現的問題與修正。</li></ul>
+</div>
+</article>
+<article id="page-language-model" data-page="language-model" hidden>
+<p class="badge concept">概念頁</p>
+<h1>語言模型：預測下一個 token</h1>
+<p class="summary">LLM 的核心工作只有一件事：根據前文，算出下一個 token 的機率，然後一個接一個寫下去。</p>
+<div class="content"><h2>一句話</h2>
+<p>語言模型就是「給它前面的文字，它預測下一個詞」的模型 <a class="cite" href="#s3" title="S3｜The Illustrated GPT-2">S3</a>。大型語言模型（LLM）是同一件事的超大版本。</p>
+<h2>從手機鍵盤開始想</h2>
+<p>手機鍵盤的選字建議就是一個小型語言模型 <a class="cite" href="#s3" title="S3｜The Illustrated GPT-2">S3</a>。GPT-2 做的事原理相同，只是規模差很多：作者用的鍵盤 SwiftKey 約佔 78 MB，而最小的 GPT-2 光是參數就要約 500 MB <a class="cite" href="#s3" title="S3｜The Illustrated GPT-2">S3</a>。</p>
+<h2>用機率來說</h2>
+<p>一段文字的機率可以拆成一連串條件機率相乘：每個詞的機率都以它前面的詞為條件 <a class="cite" href="#s6" title="S6｜How to generate text（Hugging Face 部落格）">S6</a>。模型要學的，就是「在這段前文之後，每個可能的下一個 token 各有多少機率」。</p>
+<h2>一次只寫一個 token</h2>
+<p>GPT 這類模型是<strong>自回歸</strong>的：一次生成一個 token，把它接到輸入後面，再預測下一個 <a class="cite" href="#s3" title="S3｜The Illustrated GPT-2">S3</a>。輸出長度不是事先定好的，模型產生結束（EOS）token 時才停 <a class="cite" href="#s6" title="S6｜How to generate text（Hugging Face 部落格）">S6</a>；GPT-2 另外有 1,024 個 token 的上下文上限 <a class="cite" href="#s3" title="S3｜The Illustrated GPT-2">S3</a>。</p>
+<p>Decoder-only 模型用同一套「預測下一個 token」的方式，也能做翻譯與摘要 <a class="cite" href="#s3" title="S3｜The Illustrated GPT-2">S3</a>。</p>
+<p>實際挑哪一個 token 有很多做法，見 <a class="wl" href="#decoding">解碼策略：從機率到文字</a>。</p>
+<h2>不需要人工標註</h2>
+<p>這類模型用<strong>自監督</strong>方式訓練：訓練目標直接從輸入文字自動算出，不需要人去標註 <a class="cite" href="#s4" title="S4｜Hugging Face LLM Course：How do Transformers work?">S4</a>。常見的兩種目標：</p>
+<ul>
+<li>Causal language modeling：根據前面的詞預測下一個詞，只能看過去 <a class="cite" href="#s4" title="S4｜Hugging Face LLM Course：How do Transformers work?">S4</a>。GPT 類模型用這種。</li>
+<li>Masked language modeling：預測句子中被遮住的詞，可以看左右兩側 <a class="cite" href="#s4" title="S4｜Hugging Face LLM Course：How do Transformers work?">S4</a>。BERT 類模型用這種。</li>
+</ul>
+<p>兩種目標對應到不同的模型家族，見 <a class="wl" href="#model-families">三大模型家族：BERT、GPT、T5</a>；訓練流程見 <a class="wl" href="#pretraining-finetuning">預訓練與微調</a>。</p>
+<h2>容易誤會的地方</h2>
+<ul>
+<li>「模型是一次想好整句再輸出」：不是。每一步只決定一個 token，而且已經寫出的 token 不會回頭重算 <a class="cite" href="#s3" title="S3｜The Illustrated GPT-2">S3</a>。</li>
+<li>「token 就是一個字或一個詞」：不一定，token 常常是詞的一部分 <a class="cite" href="#s3" title="S3｜The Illustrated GPT-2">S3</a>，見 <a class="wl" href="#tokenization">Token 與 BPE 斷詞</a>。</li>
+</ul>
+<h2>相關頁面</h2>
+<p><a class="wl" href="#tokenization">Token 與 BPE 斷詞</a>、<a class="wl" href="#decoding">解碼策略：從機率到文字</a>、<a class="wl" href="#model-families">三大模型家族：BERT、GPT、T5</a>、<a class="wl" href="#pretraining-finetuning">預訓練與微調</a></p></div>
+<div class="panels"><section class="panel"><h2>這頁引用的來源</h2><ul><li><a href="#s3">S3｜The Illustrated GPT-2</a></li><li><a href="#s4">S4｜Hugging Face LLM Course：How do Transformers work?</a></li><li><a href="#s6">S6｜How to generate text（Hugging Face 部落格）</a></li></ul></section><section class="panel"><h2>用在簡報的哪幾張</h2><ul><li><a href="https://claude.ai/artifact/5Kr98s8iUa5NQmZ6Zee9NU#slide-2">第 2 張　學完能回答的四個問題</a></li><li><a href="https://claude.ai/artifact/5Kr98s8iUa5NQmZ6Zee9NU#slide-3">第 3 張　LLM 只做一件事</a></li><li><a href="https://claude.ai/artifact/5Kr98s8iUa5NQmZ6Zee9NU#slide-4">第 4 張　一次只寫一個 token</a></li><li><a href="https://claude.ai/artifact/5Kr98s8iUa5NQmZ6Zee9NU#slide-16">第 16 張　小測驗</a></li><li><a href="https://claude.ai/artifact/5Kr98s8iUa5NQmZ6Zee9NU#slide-17">第 17 張　總結</a></li></ul></section><section class="panel"><h2>連到這頁的頁面</h2><ul><li><a href="#decoding">解碼策略：從機率到文字</a></li><li><a href="#model-families">三大模型家族：BERT、GPT、T5</a></li><li><a href="#pretraining-finetuning">預訓練與微調</a></li><li><a href="#s3">S3｜The Illustrated GPT-2</a></li><li><a href="#s4">S4｜Hugging Face LLM Course：How do Transformers work?</a></li><li><a href="#s6">S6｜How to generate text（Hugging Face 部落格）</a></li><li><a href="#tokenization">Token 與 BPE 斷詞</a></li></ul></section></div>
+</article><article id="page-tokenization" data-page="tokenization" hidden>
+<p class="badge concept">概念頁</p>
+<h1>Token 與 BPE 斷詞</h1>
+<p class="summary">模型看不懂文字，只看得懂編號。BPE 從字元出發，反覆合併最常見的相鄰組合，學出一套子詞詞彙。</p>
+<div class="content"><h2>一句話</h2>
+<p>斷詞（tokenization）把文字切成 token。GPT-2 這類模型的 token 常常是詞的一部分，也就是「子詞」<a class="cite" href="#s3" title="S3｜The Illustrated GPT-2">S3</a>。「比字元大、比單字小」是本 Wiki 的白話說法。</p>
+<h2>為什麼不直接用單字</h2>
+<p>GPT-2 用 byte pair encoding（BPE）建立詞彙，所以它的 token 常常是詞的一部分而不是整個詞 <a class="cite" href="#s3" title="S3｜The Illustrated GPT-2">S3</a>。它的詞彙約 50,000 個 <a class="cite" href="#s3" title="S3｜The Illustrated GPT-2">S3</a>；原始 Transformer 論文的英德翻譯也用 BPE，共享詞彙約 37,000 個 token <a class="cite" href="#s1" title="S1｜Attention Is All You Need">S1</a>。子詞的效果在下面的玩具例子看得到：常見的字是一個 token，少見的字由幾個 token 拼成 <a class="cite" href="#s5" title="S5｜Hugging Face LLM Course：Byte-Pair Encoding tokenization">S5</a>。</p>
+<h2>BPE 怎麼學出詞彙</h2>
+<p>BPE 最初是文字壓縮演算法，後來 OpenAI 在預訓練 GPT 時把它拿來斷詞；GPT、GPT-2、RoBERTa、BART、DeBERTa 都使用它 <a class="cite" href="#s5" title="S5｜Hugging Face LLM Course：Byte-Pair Encoding tokenization">S5</a>。</p>
+<p>訓練步驟 <a class="cite" href="#s5" title="S5｜Hugging Face LLM Course：Byte-Pair Encoding tokenization">S5</a>：</p>
+<ul>
+<li>把語料切成單字並計算次數，再把每個單字拆成單一符號。</li>
+<li>統計所有相鄰符號對的出現次數。</li>
+<li>把最常出現的一對合併成一個新 token，加入詞彙。</li>
+<li>重複統計與合併，直到詞彙達到想要的大小。</li>
+</ul>
+<p>每次合併都記成一條規則，之後對新文字斷詞時依同樣順序套用 <a class="cite" href="#s5" title="S5｜Hugging Face LLM Course：Byte-Pair Encoding tokenization">S5</a>。</p>
+<h2>玩具例子</h2>
+<p>語料：hug 出現 10 次、pug 5 次、pun 12 次、bun 4 次、hugs 5 次 <a class="cite" href="#s5" title="S5｜Hugging Face LLM Course：Byte-Pair Encoding tokenization">S5</a>。基礎詞彙是 7 個符號 b、g、h、n、p、s、u <a class="cite" href="#s5" title="S5｜Hugging Face LLM Course：Byte-Pair Encoding tokenization">S5</a>。</p>
+<ul>
+<li>第 1 次合併：(u, g) 出現 20 次，比 (h, u) 的 15 次多，所以 u + g → ug <a class="cite" href="#s5" title="S5｜Hugging Face LLM Course：Byte-Pair Encoding tokenization">S5</a>。</li>
+<li>第 2 次合併：(u, n) 出現 16 次，u + n → un <a class="cite" href="#s5" title="S5｜Hugging Face LLM Course：Byte-Pair Encoding tokenization">S5</a>。</li>
+<li>第 3 次合併：(h, ug) 出現 15 次，h + ug → hug <a class="cite" href="#s5" title="S5｜Hugging Face LLM Course：Byte-Pair Encoding tokenization">S5</a>。</li>
+</ul>
+<p>3 次合併後，詞彙變成 10 個 token <a class="cite" href="#s5" title="S5｜Hugging Face LLM Course：Byte-Pair Encoding tokenization">S5</a>。常見的 hug 變成一個 token，較少見的 pug 則是 p 加 ug 兩個 token。</p>
+<h2>遇到沒看過的字元</h2>
+<p>用上面的規則斷 bug 會得到 [b, ug]；斷 mug 會得到 [UNK, ug]，因為 m 不在基礎詞彙裡 <a class="cite" href="#s5" title="S5｜Hugging Face LLM Course：Byte-Pair Encoding tokenization">S5</a>。</p>
+<p>GPT-2 與 RoBERTa 改用 <strong>byte-level BPE</strong> 避開這個問題：把文字看成 byte，基礎詞彙只有 256 個，任何字元都能表示，不會出現未知 token <a class="cite" href="#s5" title="S5｜Hugging Face LLM Course：Byte-Pair Encoding tokenization">S5</a>。</p>
+<h2>容易誤會的地方</h2>
+<ul>
+<li>玩具例子的 [UNK] 是字元層級 BPE 的現象，不是 GPT-2 的行為；兩者在來源中是分開講的 <a class="cite" href="#s5" title="S5｜Hugging Face LLM Course：Byte-Pair Encoding tokenization">S5</a>。</li>
+<li>許多圖解文章為了好懂把「詞」和 token 混用，讀的時候要自己換算，見 <a class="wl" href="#open-questions">來源之間的不一致與未解問題</a>。</li>
+</ul>
+<h2>相關頁面</h2>
+<p>token 換成編號後的下一步是 <a class="wl" href="#embedding-position">Embedding 與位置編碼</a>。整體流程見 <a class="wl" href="#language-model">語言模型：預測下一個 token</a>。</p></div>
+<div class="panels"><section class="panel"><h2>這頁引用的來源</h2><ul><li><a href="#s1">S1｜Attention Is All You Need</a></li><li><a href="#s3">S3｜The Illustrated GPT-2</a></li><li><a href="#s5">S5｜Hugging Face LLM Course：Byte-Pair Encoding tokenization</a></li></ul></section><section class="panel"><h2>用在簡報的哪幾張</h2><ul><li><a href="https://claude.ai/artifact/5Kr98s8iUa5NQmZ6Zee9NU#slide-5">第 5 張　文字先切成 token</a></li><li><a href="https://claude.ai/artifact/5Kr98s8iUa5NQmZ6Zee9NU#slide-6">第 6 張　BPE 玩具例子</a></li><li><a href="https://claude.ai/artifact/5Kr98s8iUa5NQmZ6Zee9NU#slide-16">第 16 張　小測驗</a></li><li><a href="https://claude.ai/artifact/5Kr98s8iUa5NQmZ6Zee9NU#slide-17">第 17 張　總結</a></li></ul></section><section class="panel"><h2>連到這頁的頁面</h2><ul><li><a href="#embedding-position">Embedding 與位置編碼</a></li><li><a href="#language-model">語言模型：預測下一個 token</a></li><li><a href="#log">執行紀錄（2026-11-17）</a></li><li><a href="#s1">S1｜Attention Is All You Need</a></li><li><a href="#s2">S2｜The Illustrated Transformer</a></li><li><a href="#s3">S3｜The Illustrated GPT-2</a></li><li><a href="#s5">S5｜Hugging Face LLM Course：Byte-Pair Encoding tokenization</a></li></ul></section></div>
+</article><article id="page-embedding-position" data-page="embedding-position" hidden>
+<p class="badge concept">概念頁</p>
+<h1>Embedding 與位置編碼</h1>
+<p class="summary">每個 token 先查表變成一個向量，再加上代表位置的向量，模型才同時知道「是什麼字」與「在第幾個」。</p>
+<div class="content"><h2>一句話</h2>
+<p>Embedding 把 token 編號換成向量 <a class="cite" href="#s3" title="S3｜The Illustrated GPT-2">S3</a>；位置編碼把「順序」這個資訊加進向量裡 <a class="cite" href="#s2" title="S2｜The Illustrated Transformer">S2</a>。兩者相加後才送進第一個區塊 <a class="cite" href="#s3" title="S3｜The Illustrated GPT-2">S3</a>。</p>
+<h2>Embedding：查表</h2>
+<p>模型有一張 token embedding 矩陣，每一列對應一個詞彙；輸入的每個 token 都到這張表查出自己的向量 <a class="cite" href="#s3" title="S3｜The Illustrated GPT-2">S3</a>。原始 Transformer 的向量是 512 維 <a class="cite" href="#s1" title="S1｜Attention Is All You Need">S1</a><a class="cite" href="#s2" title="S2｜The Illustrated Transformer">S2</a>，最小的 GPT-2 是 768 維 <a class="cite" href="#s3" title="S3｜The Illustrated GPT-2">S3</a>。</p>
+<p>只有最底層收到 embedding，往上每一層收到的是下一層的輸出 <a class="cite" href="#s2" title="S2｜The Illustrated Transformer">S2</a>。</p>
+<h2>為什麼還需要位置</h2>
+<p>自注意力本身不知道詞序 <a class="cite" href="#s2" title="S2｜The Illustrated Transformer">S2</a>。原始論文拿掉了遞迴與卷積，所以必須另外把位置資訊加到輸入 embedding 上 <a class="cite" href="#s1" title="S1｜Attention Is All You Need">S1</a>。</p>
+<p>沒有位置資訊的話，模型看到的只是一袋 token，分不出「狗咬人」與「人咬狗」。這個比喻是本 Wiki 為了教學加的，不是來源原文。</p>
+<h2>怎麼加</h2>
+<ul>
+<li>原始論文：用不同頻率的 sin 與 cos 函數算出位置向量，直接加到 embedding 上；作者也試過讓模型自己學位置 embedding，結果幾乎相同 <a class="cite" href="#s1" title="S1｜Attention Is All You Need">S1</a>。</li>
+<li>GPT-2：有一張位置編碼矩陣，為 1,024 個位置各存一個向量，加到 token embedding 上 <a class="cite" href="#s3" title="S3｜The Illustrated GPT-2">S3</a>。</li>
+</ul>
+<h2>同一張表用兩次</h2>
+<p>原始論文讓輸入 embedding、輸出 embedding 與 softmax 前的線性層共用同一個權重矩陣 <a class="cite" href="#s1" title="S1｜Attention Is All You Need">S1</a>。GPT-2 也類似：最上層輸出的向量乘上 embedding 矩陣，就得到每個詞彙的分數 <a class="cite" href="#s3" title="S3｜The Illustrated GPT-2">S3</a>。這些分數怎麼變成字，見 <a class="wl" href="#decoding">解碼策略：從機率到文字</a>。</p>
+<h2>容易誤會的地方</h2>
+<ul>
+<li>圖解文章裡位置編碼的圖是 sin、cos 各半串接，論文是交錯排列，兩者圖案看起來不同 <a class="cite" href="#s2" title="S2｜The Illustrated Transformer">S2</a>，見 <a class="wl" href="#open-questions">來源之間的不一致與未解問題</a>。</li>
+</ul>
+<h2>相關頁面</h2>
+<p>上一步：<a class="wl" href="#tokenization">Token 與 BPE 斷詞</a>。下一步：<a class="wl" href="#self-attention">自注意力（Self-Attention）</a>。整體位置：<a class="wl" href="#transformer-architecture">Transformer 架構全貌</a>。</p></div>
+<div class="panels"><section class="panel"><h2>這頁引用的來源</h2><ul><li><a href="#s1">S1｜Attention Is All You Need</a></li><li><a href="#s2">S2｜The Illustrated Transformer</a></li><li><a href="#s3">S3｜The Illustrated GPT-2</a></li></ul></section><section class="panel"><h2>用在簡報的哪幾張</h2><ul><li><a href="https://claude.ai/artifact/5Kr98s8iUa5NQmZ6Zee9NU#slide-7">第 7 張　token 變成向量，再加上位置</a></li><li><a href="https://claude.ai/artifact/5Kr98s8iUa5NQmZ6Zee9NU#slide-17">第 17 張　總結</a></li></ul></section><section class="panel"><h2>連到這頁的頁面</h2><ul><li><a href="#decoding">解碼策略：從機率到文字</a></li><li><a href="#log">執行紀錄（2026-11-17）</a></li><li><a href="#open-questions">來源之間的不一致與未解問題</a></li><li><a href="#s1">S1｜Attention Is All You Need</a></li><li><a href="#s2">S2｜The Illustrated Transformer</a></li><li><a href="#s3">S3｜The Illustrated GPT-2</a></li><li><a href="#self-attention">自注意力（Self-Attention）</a></li><li><a href="#tokenization">Token 與 BPE 斷詞</a></li><li><a href="#transformer-architecture">Transformer 架構全貌</a></li></ul></section></div>
+</article><article id="page-why-transformer" data-page="why-transformer" hidden>
+<p class="badge concept">概念頁</p>
+<h1>為什麼 Transformer 取代了 RNN</h1>
+<p class="summary">RNN 必須一個字一個字依序算，慢又難記住遠處的字；注意力讓所有位置直接相連，可以平行訓練。</p>
+<div class="content"><h2>一句話</h2>
+<p>Transformer 拿掉了遞迴與卷積，只靠注意力，讓任意兩個位置只需常數次運算就能相連，而且整個序列可以平行處理 <a class="cite" href="#s1" title="S1｜Attention Is All You Need">S1</a>。</p>
+<h2>之前的模型卡在哪裡</h2>
+<ul>
+<li>RNN（LSTM、GRU）必須依序處理 token，單一訓練樣本內無法平行運算，序列越長成本越高 <a class="cite" href="#s1" title="S1｜Attention Is All You Need">S1</a>。</li>
+<li>以 CNN 為基礎的模型比較能平行，但關聯兩個位置所需的運算數會隨距離增加，遠距離的依賴較難學 <a class="cite" href="#s1" title="S1｜Attention Is All You Need">S1</a>。</li>
+</ul>
+<h2>論文的比較</h2>
+<p>依論文表 1 <a class="cite" href="#s1" title="S1｜Attention Is All You Need">S1</a>：</p>
+<table>
+<thead>
+<tr>
+<th>層的種類</th>
+<th>每層複雜度</th>
+<th>必須依序做的運算</th>
+<th>兩位置間最長路徑</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>自注意力</td>
+<td>O(n²·d)</td>
+<td>O(1)</td>
+<td>O(1)</td>
+</tr>
+<tr>
+<td>遞迴層</td>
+<td>O(n·d²)</td>
+<td>O(n)</td>
+<td>O(n)</td>
+</tr>
+</tbody>
+</table>
+<p>n 是序列長度，d 是表示維度。當 n 小於 d 時（句子層級常見），自注意力每層比遞迴層快 <a class="cite" href="#s1" title="S1｜Attention Is All You Need">S1</a>。</p>
+<p>代價也看得出來：自注意力的成本隨長度平方成長，所以序列很長時並不便宜 <a class="cite" href="#s1" title="S1｜Attention Is All You Need">S1</a>。</p>
+<h2>實驗結果</h2>
+<ul>
+<li>硬體是一台裝有 8 顆 GPU 的機器；base 模型訓練約 12 小時，big 模型約 3.5 天 <a class="cite" href="#s1" title="S1｜Attention Is All You Need">S1</a>。</li>
+<li>Big 模型英德翻譯 BLEU 為 28.4，比先前最佳結果高出超過 2 BLEU <a class="cite" href="#s1" title="S1｜Attention Is All You Need">S1</a>。</li>
+<li>Big 模型英法翻譯 BLEU 為 41.8 <a class="cite" href="#s1" title="S1｜Attention Is All You Need">S1</a>。這個數字在來源內有兩種寫法，見 <a class="wl" href="#open-questions">來源之間的不一致與未解問題</a>。</li>
+</ul>
+<h2>容易誤會的地方</h2>
+<ul>
+<li>「Transformer 計算量一定比 RNN 小」：不對。它的優勢是能平行、路徑短；每層成本在長序列下反而成長更快 <a class="cite" href="#s1" title="S1｜Attention Is All You Need">S1</a>。</li>
+</ul>
+<h2>相關頁面</h2>
+<p><a class="wl" href="#self-attention">自注意力（Self-Attention）</a>、<a class="wl" href="#transformer-architecture">Transformer 架構全貌</a></p></div>
+<div class="panels"><section class="panel"><h2>這頁引用的來源</h2><ul><li><a href="#s1">S1｜Attention Is All You Need</a></li></ul></section><section class="panel"><h2>用在簡報的哪幾張</h2><ul><li><a href="https://claude.ai/artifact/5Kr98s8iUa5NQmZ6Zee9NU#slide-8">第 8 張　為什麼需要注意力</a></li><li><a href="https://claude.ai/artifact/5Kr98s8iUa5NQmZ6Zee9NU#slide-12">第 12 張　為什麼贏過 RNN</a></li></ul></section><section class="panel"><h2>連到這頁的頁面</h2><ul><li><a href="#open-questions">來源之間的不一致與未解問題</a></li><li><a href="#s1">S1｜Attention Is All You Need</a></li><li><a href="#self-attention">自注意力（Self-Attention）</a></li><li><a href="#transformer-architecture">Transformer 架構全貌</a></li></ul></section></div>
+</article><article id="page-self-attention" data-page="self-attention" hidden>
+<p class="badge concept">概念頁</p>
+<h1>自注意力（Self-Attention）</h1>
+<p class="summary">處理每個 token 時，讓它去「看」句子裡其他 token，依相關程度加權後混合進自己的表示。</p>
+<div class="content"><h2>一句話</h2>
+<p>自注意力讓模型在處理每個詞的表示時，特別關注句中某些詞、忽略其他詞 <a class="cite" href="#s4" title="S4｜Hugging Face LLM Course：How do Transformers work?">S4</a>。它是 Transformer 的核心。</p>
+<h2>直覺：it 指的是誰</h2>
+<p>例句：「The animal didn't cross the street because it was too tired.」it 指的是 animal 還是 street？自注意力讓模型在編碼 it 時去看其他位置，把 it 和 animal 關聯起來 <a class="cite" href="#s2" title="S2｜The Illustrated Transformer">S2</a>。</p>
+<p>另一個例子：把「You like this course」翻成法文，翻 like 需要注意 You，因為法文動詞變化取決於主詞；翻 this 需要注意 course，因為用字隨名詞陰陽性改變 <a class="cite" href="#s4" title="S4｜Hugging Face LLM Course：How do Transformers work?">S4</a>。</p>
+<h2>怎麼算</h2>
+<p>每個 token 會產生三個向量：Query（我想找什麼）、Key（我是什麼）、Value（我能提供什麼）。括號裡的白話是本 Wiki 的教學說法；來源的定義是「embedding 乘上三個訓練出的權重矩陣」<a class="cite" href="#s2" title="S2｜The Illustrated Transformer">S2</a>。</p>
+<p>圖解文章把計算分成 6 步 <a class="cite" href="#s2" title="S2｜The Illustrated Transformer">S2</a>：</p>
+<ul>
+<li>從每個 embedding 算出 query、key、value 三個向量。原始模型中它們是 64 維，比 512 維的 embedding 小 <a class="cite" href="#s2" title="S2｜The Illustrated Transformer">S2</a>。</li>
+<li>用目前這個 token 的 query 與每個 token 的 key 做內積，得到分數 <a class="cite" href="#s2" title="S2｜The Illustrated Transformer">S2</a>。</li>
+<li>把分數除以 8，也就是 key 維度 64 的平方根 <a class="cite" href="#s2" title="S2｜The Illustrated Transformer">S2</a>。</li>
+<li>做 softmax，讓分數都為正且總和為 1 <a class="cite" href="#s2" title="S2｜The Illustrated Transformer">S2</a>。</li>
+<li>每個 value 乘上自己的分數，不相關的 token 被縮到接近零 <a class="cite" href="#s2" title="S2｜The Illustrated Transformer">S2</a>。</li>
+<li>把加權後的 value 加總，得到這個位置的輸出 <a class="cite" href="#s2" title="S2｜The Illustrated Transformer">S2</a>。</li>
+</ul>
+<p>寫成一條公式是 softmax(QKᵀ / √d_k) · V <a class="cite" href="#s1" title="S1｜Attention Is All You Need">S1</a>。除以 √d_k 是因為維度大時內積會變大，softmax 會落在梯度極小的區域，不好訓練 <a class="cite" href="#s1" title="S1｜Attention Is All You Need">S1</a>。</p>
+<h2>遮罩：不准偷看未來</h2>
+<p>生成文字時，模型不能看到還沒寫出來的字。做法是在 softmax 之前把未來位置的分數設成負無限大，權重就變成零 <a class="cite" href="#s2" title="S2｜The Illustrated Transformer">S2</a><a class="cite" href="#s3" title="S3｜The Illustrated GPT-2">S3</a>。這種版本叫遮罩自注意力，是 decoder 與 GPT 類模型使用的 <a class="cite" href="#s1" title="S1｜Attention Is All You Need">S1</a><a class="cite" href="#s3" title="S3｜The Illustrated GPT-2">S3</a>。</p>
+<p>Encoder 的自注意力沒有遮罩，可以看整句 <a class="cite" href="#s4" title="S4｜Hugging Face LLM Course：How do Transformers work?">S4</a>。</p>
+<h2>為什麼它適合長句子</h2>
+<p>自注意力讓任意兩個位置之間的路徑長度是常數；遞迴層則要一步步傳遞，路徑長度隨序列長度成長 <a class="cite" href="#s1" title="S1｜Attention Is All You Need">S1</a>。完整比較見 <a class="wl" href="#why-transformer">為什麼 Transformer 取代了 RNN</a>。</p>
+<h2>容易誤會的地方</h2>
+<ul>
+<li>注意力權重不是人寫的規則，而是由訓練出來的 Q/K/V 權重矩陣算出的 <a class="cite" href="#s2" title="S2｜The Illustrated Transformer">S2</a>。</li>
+<li>一層自注意力只算一種「誰看誰」的關係不夠用，實際模型同時算好幾組，見 <a class="wl" href="#multi-head-attention">多頭注意力（Multi-Head Attention）</a>。</li>
+</ul>
+<h2>相關頁面</h2>
+<p><a class="wl" href="#multi-head-attention">多頭注意力（Multi-Head Attention）</a>、<a class="wl" href="#transformer-architecture">Transformer 架構全貌</a>、<a class="wl" href="#embedding-position">Embedding 與位置編碼</a>、<a class="wl" href="#why-transformer">為什麼 Transformer 取代了 RNN</a></p></div>
+<div class="panels"><section class="panel"><h2>這頁引用的來源</h2><ul><li><a href="#s1">S1｜Attention Is All You Need</a></li><li><a href="#s2">S2｜The Illustrated Transformer</a></li><li><a href="#s3">S3｜The Illustrated GPT-2</a></li><li><a href="#s4">S4｜Hugging Face LLM Course：How do Transformers work?</a></li></ul></section><section class="panel"><h2>用在簡報的哪幾張</h2><ul><li><a href="https://claude.ai/artifact/5Kr98s8iUa5NQmZ6Zee9NU#slide-8">第 8 張　為什麼需要注意力</a></li><li><a href="https://claude.ai/artifact/5Kr98s8iUa5NQmZ6Zee9NU#slide-9">第 9 張　自注意力怎麼算</a></li><li><a href="https://claude.ai/artifact/5Kr98s8iUa5NQmZ6Zee9NU#slide-10">第 10 張　多頭與遮罩</a></li><li><a href="https://claude.ai/artifact/5Kr98s8iUa5NQmZ6Zee9NU#slide-16">第 16 張　小測驗</a></li><li><a href="https://claude.ai/artifact/5Kr98s8iUa5NQmZ6Zee9NU#slide-17">第 17 張　總結</a></li></ul></section><section class="panel"><h2>連到這頁的頁面</h2><ul><li><a href="#embedding-position">Embedding 與位置編碼</a></li><li><a href="#multi-head-attention">多頭注意力（Multi-Head Attention）</a></li><li><a href="#open-questions">來源之間的不一致與未解問題</a></li><li><a href="#s1">S1｜Attention Is All You Need</a></li><li><a href="#s2">S2｜The Illustrated Transformer</a></li><li><a href="#s3">S3｜The Illustrated GPT-2</a></li><li><a href="#s4">S4｜Hugging Face LLM Course：How do Transformers work?</a></li><li><a href="#transformer-architecture">Transformer 架構全貌</a></li><li><a href="#why-transformer">為什麼 Transformer 取代了 RNN</a></li></ul></section></div>
+</article><article id="page-multi-head-attention" data-page="multi-head-attention" hidden>
+<p class="badge concept">概念頁</p>
+<h1>多頭注意力（Multi-Head Attention）</h1>
+<p class="summary">同時跑好幾組各自獨立的自注意力，每一組關注不同的關係，最後把結果接起來。</p>
+<div class="content"><h2>一句話</h2>
+<p>多頭注意力就是把 <a class="wl" href="#self-attention">自注意力（Self-Attention）</a> 平行做很多份，每一份（一個「頭」）有自己的 Q/K/V 權重矩陣 <a class="cite" href="#s2" title="S2｜The Illustrated Transformer">S2</a>。</p>
+<h2>為什麼要很多頭</h2>
+<p>兩個好處：模型能同時關注不同的位置，並且擁有多個表示子空間 <a class="cite" href="#s1" title="S1｜Attention Is All You Need">S1</a><a class="cite" href="#s2" title="S2｜The Illustrated Transformer">S2</a>。</p>
+<p>在 it 的例子裡，編碼 it 時一個頭主要關注 the animal，另一個頭關注 tired <a class="cite" href="#s2" title="S2｜The Illustrated Transformer">S2</a>。一句話裡同時存在「指代誰」和「狀態是什麼」這些不同的關係，多頭讓它們可以分開處理。</p>
+<h2>數字</h2>
+<ul>
+<li>原始 Transformer 用 8 個頭，每個頭的向量是 64 維，也就是 512 除以 8 <a class="cite" href="#s1" title="S1｜Attention Is All You Need">S1</a>。</li>
+<li>因為每個頭的維度變小，總計算量和單頭全維度的注意力相近 <a class="cite" href="#s1" title="S1｜Attention Is All You Need">S1</a>。</li>
+<li>論文的 big 模型用 16 個頭 <a class="cite" href="#s1" title="S1｜Attention Is All You Need">S1</a>；最小的 GPT-2 用 12 個頭 <a class="cite" href="#s3" title="S3｜The Illustrated GPT-2">S3</a>。</li>
+</ul>
+<h2>怎麼合起來</h2>
+<p>每個頭各自產生一個輸出，全部串接起來，再乘上一個額外的權重矩陣投影回模型維度，交給後面的前饋網路 <a class="cite" href="#s1" title="S1｜Attention Is All You Need">S1</a><a class="cite" href="#s2" title="S2｜The Illustrated Transformer">S2</a>。</p>
+<h2>在原始 Transformer 裡出現的三個地方</h2>
+<p>依論文的說明 <a class="cite" href="#s1" title="S1｜Attention Is All You Need">S1</a>：</p>
+<ul>
+<li>Encoder 自注意力：每個位置可以看前一層的所有位置。</li>
+<li>Decoder 遮罩自注意力：每個位置只能看目前與之前的位置。</li>
+<li>Encoder-decoder 注意力：query 來自 decoder，key 與 value 來自 encoder 的輸出，讓 decoder 每一步都能看整個輸入句子。</li>
+</ul>
+<p>GPT-2 的 decoder-only 區塊拿掉了看 encoder 的那一層，所以只剩第二種 <a class="cite" href="#s3" title="S3｜The Illustrated GPT-2">S3</a>，見 <a class="wl" href="#model-families">三大模型家族：BERT、GPT、T5</a>。</p>
+<h2>相關頁面</h2>
+<p><a class="wl" href="#self-attention">自注意力（Self-Attention）</a>、<a class="wl" href="#transformer-architecture">Transformer 架構全貌</a>、<a class="wl" href="#model-families">三大模型家族：BERT、GPT、T5</a></p></div>
+<div class="panels"><section class="panel"><h2>這頁引用的來源</h2><ul><li><a href="#s1">S1｜Attention Is All You Need</a></li><li><a href="#s2">S2｜The Illustrated Transformer</a></li><li><a href="#s3">S3｜The Illustrated GPT-2</a></li></ul></section><section class="panel"><h2>用在簡報的哪幾張</h2><ul><li><a href="https://claude.ai/artifact/5Kr98s8iUa5NQmZ6Zee9NU#slide-10">第 10 張　多頭與遮罩</a></li></ul></section><section class="panel"><h2>連到這頁的頁面</h2><ul><li><a href="#model-families">三大模型家族：BERT、GPT、T5</a></li><li><a href="#s1">S1｜Attention Is All You Need</a></li><li><a href="#s2">S2｜The Illustrated Transformer</a></li><li><a href="#s3">S3｜The Illustrated GPT-2</a></li><li><a href="#self-attention">自注意力（Self-Attention）</a></li><li><a href="#transformer-architecture">Transformer 架構全貌</a></li></ul></section></div>
+</article><article id="page-transformer-architecture" data-page="transformer-architecture" hidden>
+<p class="badge concept">概念頁</p>
+<h1>Transformer 架構全貌</h1>
+<p class="summary">原始 Transformer 是 encoder 堆疊加 decoder 堆疊；每一層都是「注意力 + 前饋網路」，外面包殘差連接與正規化。</p>
+<div class="content"><h2>一句話</h2>
+<p>把一個「注意力加前饋網路」的區塊重複堆很多層，就是 Transformer。原始版本有 encoder 與 decoder 兩疊，用來做翻譯 <a class="cite" href="#s2" title="S2｜The Illustrated Transformer">S2</a>。</p>
+<h2>兩疊各 6 層</h2>
+<p>原始模型的 encoder 與 decoder 各由 6 層相同結構的層堆成 <a class="cite" href="#s1" title="S1｜Attention Is All You Need">S1</a><a class="cite" href="#s2" title="S2｜The Illustrated Transformer">S2</a>。各層結構相同，但權重不共用 <a class="cite" href="#s2" title="S2｜The Illustrated Transformer">S2</a>。6 不是唯一可行的數字 <a class="cite" href="#s2" title="S2｜The Illustrated Transformer">S2</a>。</p>
+<h2>每一層裡面有什麼</h2>
+<ul>
+<li>Encoder 層有 2 個子層：多頭自注意力、前饋網路 <a class="cite" href="#s1" title="S1｜Attention Is All You Need">S1</a>。</li>
+<li>Decoder 層有 3 個子層：遮罩自注意力、看 encoder 輸出的 encoder-decoder 注意力、前饋網路 <a class="cite" href="#s1" title="S1｜Attention Is All You Need">S1</a>。</li>
+<li>每個子層外面都包一條殘差連接，之後接 layer normalization <a class="cite" href="#s1" title="S1｜Attention Is All You Need">S1</a><a class="cite" href="#s2" title="S2｜The Illustrated Transformer">S2</a>。</li>
+</ul>
+<p>前饋網路對每個位置獨立套用，內層維度是 2048，輸入輸出是 512 <a class="cite" href="#s1" title="S1｜Attention Is All You Need">S1</a>。各個 token 只在自注意力層彼此相依，所以前饋網路可以對所有位置平行計算 <a class="cite" href="#s2" title="S2｜The Illustrated Transformer">S2</a>。</p>
+<h2>資料怎麼流過去</h2>
+<p>以翻譯為例，依圖解文章的順序 <a class="cite" href="#s2" title="S2｜The Illustrated Transformer">S2</a>：</p>
+<ul>
+<li>輸入句子的每個 token 變成 embedding，加上位置編碼（見 <a class="wl" href="#embedding-position">Embedding 與位置編碼</a>）。</li>
+<li>向量一層層流過 encoder 堆疊。</li>
+<li>最上層 encoder 的輸出轉成一組 K、V 向量，提供給每一層 decoder 的 encoder-decoder 注意力使用。</li>
+<li>Decoder 一步輸出一個 token，再把它餵回最底層，直到出現結束符號。</li>
+<li>Decoder 最上層輸出的向量經過線性層變成 logits（每個詞彙一個分數），再經 softmax 變成機率。</li>
+</ul>
+<p>最後一步怎麼從機率挑出字，見 <a class="wl" href="#decoding">解碼策略：從機率到文字</a>。</p>
+<h2>規模</h2>
+<p>論文的 base 模型約 6,500 萬參數，big 模型約 2.13 億參數 <a class="cite" href="#s1" title="S1｜Attention Is All You Need">S1</a>。和後來的模型相比很小，各家族的發展見 <a class="wl" href="#model-families">三大模型家族：BERT、GPT、T5</a>。</p>
+<h2>容易誤會的地方</h2>
+<ul>
+<li>「Transformer 一定有 encoder 和 decoder」：原始版本是，但後來的 BERT 只用 encoder、GPT 只用 decoder，見 <a class="wl" href="#model-families">三大模型家族：BERT、GPT、T5</a>。</li>
+</ul>
+<h2>相關頁面</h2>
+<p><a class="wl" href="#self-attention">自注意力（Self-Attention）</a>、<a class="wl" href="#multi-head-attention">多頭注意力（Multi-Head Attention）</a>、<a class="wl" href="#embedding-position">Embedding 與位置編碼</a>、<a class="wl" href="#why-transformer">為什麼 Transformer 取代了 RNN</a>、<a class="wl" href="#model-families">三大模型家族：BERT、GPT、T5</a></p></div>
+<div class="panels"><section class="panel"><h2>這頁引用的來源</h2><ul><li><a href="#s1">S1｜Attention Is All You Need</a></li><li><a href="#s2">S2｜The Illustrated Transformer</a></li></ul></section><section class="panel"><h2>用在簡報的哪幾張</h2><ul><li><a href="https://claude.ai/artifact/5Kr98s8iUa5NQmZ6Zee9NU#slide-2">第 2 張　學完能回答的四個問題</a></li><li><a href="https://claude.ai/artifact/5Kr98s8iUa5NQmZ6Zee9NU#slide-11">第 11 張　Transformer 架構全貌</a></li><li><a href="https://claude.ai/artifact/5Kr98s8iUa5NQmZ6Zee9NU#slide-17">第 17 張　總結</a></li></ul></section><section class="panel"><h2>連到這頁的頁面</h2><ul><li><a href="#decoding">解碼策略：從機率到文字</a></li><li><a href="#embedding-position">Embedding 與位置編碼</a></li><li><a href="#model-families">三大模型家族：BERT、GPT、T5</a></li><li><a href="#multi-head-attention">多頭注意力（Multi-Head Attention）</a></li><li><a href="#s1">S1｜Attention Is All You Need</a></li><li><a href="#s2">S2｜The Illustrated Transformer</a></li><li><a href="#self-attention">自注意力（Self-Attention）</a></li><li><a href="#why-transformer">為什麼 Transformer 取代了 RNN</a></li></ul></section></div>
+</article><article id="page-model-families" data-page="model-families" hidden>
+<p class="badge concept">概念頁</p>
+<h1>三大模型家族：BERT、GPT、T5</h1>
+<p class="summary">只用 encoder 的擅長理解，只用 decoder 的擅長生成，兩者都用的擅長「讀一段、寫一段」。GPT 系列屬於 decoder-only。</p>
+<div class="content"><h2>一句話</h2>
+<p>原始 Transformer 之後，模型分成三條路線：encoder-only、decoder-only、encoder-decoder <a class="cite" href="#s4" title="S4｜Hugging Face LLM Course：How do Transformers work?">S4</a>。</p>
+<h2>三個家族</h2>
+<p>依課程的分類整理 <a class="cite" href="#s4" title="S4｜Hugging Face LLM Course：How do Transformers work?">S4</a>：</p>
+<table>
+<thead>
+<tr>
+<th>家族</th>
+<th>代表</th>
+<th>怎麼看上下文</th>
+<th>適合的任務</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Encoder-only（自編碼）</td>
+<td>BERT</td>
+<td>左右兩側都看</td>
+<td>句子分類、命名實體辨識等理解型任務</td>
+</tr>
+<tr>
+<td>Decoder-only（自回歸）</td>
+<td>GPT</td>
+<td>只看前文</td>
+<td>文字生成</td>
+</tr>
+<tr>
+<td>Encoder-decoder（sequence-to-sequence）</td>
+<td>T5</td>
+<td>讀完整輸入，再逐步生成</td>
+<td>翻譯、摘要</td>
+</tr>
+</tbody>
+</table>
+<h2>區塊長得哪裡不一樣</h2>
+<p>依圖解 GPT-2 的說明 <a class="cite" href="#s3" title="S3｜The Illustrated GPT-2">S3</a>：</p>
+<ul>
+<li>Encoder 區塊：自注意力加前饋網路。</li>
+<li>Decoder 區塊：多一層去看 encoder 輸出的注意力，而且自注意力有遮罩。</li>
+<li>Decoder-only 區塊：拿掉看 encoder 的那一層，只剩遮罩自注意力與前饋網路。GPT-2 用的就是這種。</li>
+</ul>
+<h2>BERT 與 GPT 的取捨</h2>
+<p>GPT-2 是自回歸的，一次生成一個 token；BERT 不是 <a class="cite" href="#s3" title="S3｜The Illustrated GPT-2">S3</a>。BERT 放棄自回歸，換來能同時使用一個詞左右兩側的上下文 <a class="cite" href="#s3" title="S3｜The Illustrated GPT-2">S3</a>。</p>
+<p>遮住資訊的方式也不同：BERT 把輸入的詞換成 [mask]；GPT-2 是在注意力計算裡擋掉未來的位置 <a class="cite" href="#s3" title="S3｜The Illustrated GPT-2">S3</a>。</p>
+<h2>GPT-2 的規格</h2>
+<ul>
+<li>訓練資料 WebText 約 40 GB，是從網路爬下來的文字 <a class="cite" href="#s3" title="S3｜The Illustrated GPT-2">S3</a>。</li>
+<li>最小的版本 embedding 為 768 維、12 個注意力頭 <a class="cite" href="#s3" title="S3｜The Illustrated GPT-2">S3</a>。</li>
+<li>詞彙約 50,000 個，上下文最多 1,024 個 token <a class="cite" href="#s3" title="S3｜The Illustrated GPT-2">S3</a>。</li>
+</ul>
+<h2>時間軸</h2>
+<p>依課程列出的代表模型 <a class="cite" href="#s4" title="S4｜Hugging Face LLM Course：How do Transformers work?">S4</a>：</p>
+<ul>
+<li>2017 年 6 月：Transformer 架構問世 <a class="cite" href="#s4" title="S4｜Hugging Face LLM Course：How do Transformers work?">S4</a>。</li>
+<li>2018 年 6 月：GPT，第一個預訓練的 Transformer <a class="cite" href="#s4" title="S4｜Hugging Face LLM Course：How do Transformers work?">S4</a>。</li>
+<li>2018 年 10 月：BERT <a class="cite" href="#s4" title="S4｜Hugging Face LLM Course：How do Transformers work?">S4</a>。</li>
+<li>2019 年 2 月：GPT-2 <a class="cite" href="#s4" title="S4｜Hugging Face LLM Course：How do Transformers work?">S4</a>。</li>
+<li>2019 年 10 月：T5 <a class="cite" href="#s4" title="S4｜Hugging Face LLM Course：How do Transformers work?">S4</a>。</li>
+<li>2020 年 5 月：GPT-3，不需微調就能做許多任務 <a class="cite" href="#s4" title="S4｜Hugging Face LLM Course：How do Transformers work?">S4</a>。</li>
+<li>2022 年 1 月：InstructGPT，更能遵循指令 <a class="cite" href="#s4" title="S4｜Hugging Face LLM Course：How do Transformers work?">S4</a>。</li>
+<li>2023 年 1 月 Llama、2023 年 3 月 Mistral、2024 年 5 月 Gemma 2、2024 年 11 月 SmolLM2 <a class="cite" href="#s4" title="S4｜Hugging Face LLM Course：How do Transformers work?">S4</a>。</li>
+</ul>
+<p>課程說明這份清單只是舉例 <a class="cite" href="#s4" title="S4｜Hugging Face LLM Course：How do Transformers work?">S4</a>。</p>
+<h2>三個容易混用的名詞</h2>
+<ul>
+<li>Architecture：模型的骨架，例如 BERT <a class="cite" href="#s4" title="S4｜Hugging Face LLM Course：How do Transformers work?">S4</a>。</li>
+<li>Checkpoint：載入某個架構的一組訓練好的權重，例如 bert-base-cased <a class="cite" href="#s4" title="S4｜Hugging Face LLM Course：How do Transformers work?">S4</a>。</li>
+<li>Model：泛稱，兩者都可以指 <a class="cite" href="#s4" title="S4｜Hugging Face LLM Course：How do Transformers work?">S4</a>。</li>
+</ul>
+<h2>相關頁面</h2>
+<p><a class="wl" href="#transformer-architecture">Transformer 架構全貌</a>、<a class="wl" href="#language-model">語言模型：預測下一個 token</a>、<a class="wl" href="#pretraining-finetuning">預訓練與微調</a>、<a class="wl" href="#multi-head-attention">多頭注意力（Multi-Head Attention）</a></p></div>
+<div class="panels"><section class="panel"><h2>這頁引用的來源</h2><ul><li><a href="#s3">S3｜The Illustrated GPT-2</a></li><li><a href="#s4">S4｜Hugging Face LLM Course：How do Transformers work?</a></li></ul></section><section class="panel"><h2>用在簡報的哪幾張</h2><ul><li><a href="https://claude.ai/artifact/5Kr98s8iUa5NQmZ6Zee9NU#slide-13">第 13 張　三大模型家族</a></li></ul></section><section class="panel"><h2>連到這頁的頁面</h2><ul><li><a href="#language-model">語言模型：預測下一個 token</a></li><li><a href="#log">執行紀錄（2026-11-17）</a></li><li><a href="#multi-head-attention">多頭注意力（Multi-Head Attention）</a></li><li><a href="#open-questions">來源之間的不一致與未解問題</a></li><li><a href="#pretraining-finetuning">預訓練與微調</a></li><li><a href="#s3">S3｜The Illustrated GPT-2</a></li><li><a href="#s4">S4｜Hugging Face LLM Course：How do Transformers work?</a></li><li><a href="#transformer-architecture">Transformer 架構全貌</a></li></ul></section></div>
+</article><article id="page-pretraining-finetuning" data-page="pretraining-finetuning" hidden>
+<p class="badge concept">概念頁</p>
+<h1>預訓練與微調</h1>
+<p class="summary">先用海量文字讓模型學會語言（預訓練），再用少量任務資料調整（微調）。前者昂貴，後者便宜。</p>
+<div class="content"><h2>一句話</h2>
+<p>預訓練讓模型從大量原始文字學到語言的統計規律；微調再把這個通用模型調整到特定任務上 <a class="cite" href="#s4" title="S4｜Hugging Face LLM Course：How do Transformers work?">S4</a>。</p>
+<h2>訓練一步在做什麼</h2>
+<p>模型對一段輸入算出「下一個 token 的機率分布」，再和正確答案比較；正解用 one-hot 向量表示 <a class="cite" href="#s2" title="S2｜The Illustrated Transformer">S2</a>。一開始輸出是亂的，反向傳播一點一點調整權重，讓輸出分布靠近正解 <a class="cite" href="#s2" title="S2｜The Illustrated Transformer">S2</a>。</p>
+<p>正確答案不用人標，直接來自文字本身，這就是自監督 <a class="cite" href="#s4" title="S4｜Hugging Face LLM Course：How do Transformers work?">S4</a>，見 <a class="wl" href="#language-model">語言模型：預測下一個 token</a>。</p>
+<h2>預訓練</h2>
+<p>從隨機初始化的權重開始，在非常大的資料上從頭訓練，可能要好幾週 <a class="cite" href="#s4" title="S4｜Hugging Face LLM Course：How do Transformers work?">S4</a>。例如 GPT-2 的訓練資料約 40 GB 的網路文字 <a class="cite" href="#s3" title="S3｜The Illustrated GPT-2">S3</a>。</p>
+<p>一般而言，更好的表現來自更大的模型與更多的資料；訓練大模型耗時、耗算力，也有可觀的環境成本 <a class="cite" href="#s4" title="S4｜Hugging Face LLM Course：How do Transformers work?">S4</a>。</p>
+<h2>微調</h2>
+<p>拿預訓練好的模型，在較小、任務專屬、有人工標註的資料上繼續訓練 <a class="cite" href="#s4" title="S4｜Hugging Face LLM Course：How do Transformers work?">S4</a>。預訓練學到的知識轉移到新任務上，稱為遷移學習 <a class="cite" href="#s4" title="S4｜Hugging Face LLM Course：How do Transformers work?">S4</a>。</p>
+<p>微調比從頭訓練划算的原因 <a class="cite" href="#s4" title="S4｜Hugging Face LLM Course：How do Transformers work?">S4</a>：</p>
+<ul>
+<li>預訓練模型已經具備與目標任務相通的語言知識。</li>
+<li>需要的資料少得多。</li>
+<li>花的時間與資源較少。</li>
+<li>效果通常比從頭訓練好。</li>
+</ul>
+<p>一個實例：有研究先以語言模型的方式預訓練 decoder-only 模型，再微調做摘要，在資料有限時勝過預訓練的 encoder-decoder <a class="cite" href="#s3" title="S3｜The Illustrated GPT-2">S3</a>。</p>
+<h2>分享權重</h2>
+<p>分享訓練好的權重、在別人的模型上繼續做，可以降低整個社群的算力成本與碳足跡 <a class="cite" href="#s4" title="S4｜Hugging Face LLM Course：How do Transformers work?">S4</a>。這也是為什麼會區分 architecture 與 checkpoint，見 <a class="wl" href="#model-families">三大模型家族：BERT、GPT、T5</a>。</p>
+<h2>不一定要微調</h2>
+<p>GPT-3 這類更大的模型不需微調就能做許多任務（zero-shot）<a class="cite" href="#s4" title="S4｜Hugging Face LLM Course：How do Transformers work?">S4</a>。</p>
+<h2>相關頁面</h2>
+<p><a class="wl" href="#language-model">語言模型：預測下一個 token</a>、<a class="wl" href="#model-families">三大模型家族：BERT、GPT、T5</a></p></div>
+<div class="panels"><section class="panel"><h2>這頁引用的來源</h2><ul><li><a href="#s2">S2｜The Illustrated Transformer</a></li><li><a href="#s3">S3｜The Illustrated GPT-2</a></li><li><a href="#s4">S4｜Hugging Face LLM Course：How do Transformers work?</a></li></ul></section><section class="panel"><h2>用在簡報的哪幾張</h2><ul><li><a href="https://claude.ai/artifact/5Kr98s8iUa5NQmZ6Zee9NU#slide-14">第 14 張　預訓練與微調</a></li></ul></section><section class="panel"><h2>連到這頁的頁面</h2><ul><li><a href="#language-model">語言模型：預測下一個 token</a></li><li><a href="#model-families">三大模型家族：BERT、GPT、T5</a></li><li><a href="#s2">S2｜The Illustrated Transformer</a></li><li><a href="#s3">S3｜The Illustrated GPT-2</a></li><li><a href="#s4">S4｜Hugging Face LLM Course：How do Transformers work?</a></li></ul></section></div>
+</article><article id="page-decoding" data-page="decoding" hidden>
+<p class="badge concept">概念頁</p>
+<h1>解碼策略：從機率到文字</h1>
+<p class="summary">模型只給出每個 token 的機率，「怎麼挑」是另一個決定。Greedy 穩但呆板，抽樣加上 temperature、top-k、top-p 才有變化。</p>
+<div class="content"><h2>一句話</h2>
+<p>模型最上層輸出的向量經線性層變成 logits，softmax 再把它變成每個詞彙的機率 <a class="cite" href="#s2" title="S2｜The Illustrated Transformer">S2</a>。解碼策略決定如何從這個機率分布挑出下一個 token。</p>
+<h2>Greedy：永遠選最高的</h2>
+<p>每一步都選機率最高的那一個 <a class="cite" href="#s2" title="S2｜The Illustrated Transformer">S2</a><a class="cite" href="#s6" title="S6｜How to generate text（Hugging Face 部落格）">S6</a>。快又簡單，但可能錯過整體更好的序列，而且容易開始重複同樣的片語 <a class="cite" href="#s6" title="S6｜How to generate text（Hugging Face 部落格）">S6</a>。把 top-k 設成 1 就等於 greedy，同樣容易陷入重複迴圈 <a class="cite" href="#s3" title="S3｜The Illustrated GPT-2">S3</a>。</p>
+<h2>Beam search：多留幾條路</h2>
+<p>每一步保留機率最高的幾條部分序列，最後回傳整體機率最高的一條 <a class="cite" href="#s6" title="S6｜How to generate text（Hugging Face 部落格）">S6</a>。原始 Transformer 論文做翻譯時用的 beam size 是 4 <a class="cite" href="#s1" title="S1｜Attention Is All You Need">S1</a>。</p>
+<p>它適合輸出長度大致可預測的任務，例如翻譯與摘要；對話、故事這類開放式生成比較不適合 <a class="cite" href="#s6" title="S6｜How to generate text（Hugging Face 部落格）">S6</a>。理由之一：人寫的文字並不總是選高機率的下一個詞，beam search 產生的文字太好預測 <a class="cite" href="#s6" title="S6｜How to generate text（Hugging Face 部落格）">S6</a>。</p>
+<h2>抽樣：照機率擲骰子</h2>
+<p>依機率分布隨機抽出下一個 token，所以每次結果不同；結果更多樣，但可能不連貫 <a class="cite" href="#s6" title="S6｜How to generate text（Hugging Face 部落格）">S6</a>。下面三個旋鈕用來控制抽樣：</p>
+<p><strong>Temperature</strong></p>
+<p>在抽樣前重新縮放分布。調低會讓分布更尖，高機率的更容易被選、低機率的更不容易 <a class="cite" href="#s6" title="S6｜How to generate text（Hugging Face 部落格）">S6</a>。來源示範中設為 0.6 時文字較連貫；趨近 0 時行為等同 greedy <a class="cite" href="#s6" title="S6｜How to generate text（Hugging Face 部落格）">S6</a>。</p>
+<p><strong>Top-k</strong></p>
+<p>只保留機率最高的 K 個候選，重新正規化後再抽樣 <a class="cite" href="#s6" title="S6｜How to generate text（Hugging Face 部落格）">S6</a>。GPT-2 採用這個方法 <a class="cite" href="#s6" title="S6｜How to generate text（Hugging Face 部落格）">S6</a>，圖解文章舉 40 當例子 <a class="cite" href="#s3" title="S3｜The Illustrated GPT-2">S3</a>，部落格示範用 50 <a class="cite" href="#s6" title="S6｜How to generate text（Hugging Face 部落格）">S6</a>。缺點是 K 固定，不會隨分布形狀調整 <a class="cite" href="#s6" title="S6｜How to generate text（Hugging Face 部落格）">S6</a>。</p>
+<p><strong>Top-p（nucleus）</strong></p>
+<p>選出累積機率剛好達到門檻 p 的最小一組候選，再從中抽樣 <a class="cite" href="#s6" title="S6｜How to generate text（Hugging Face 部落格）">S6</a>。候選數量會自動變化：示範中 p 為 0.92 時，第一步需要 9 個詞，第二步只需要 3 個 <a class="cite" href="#s6" title="S6｜How to generate text（Hugging Face 部落格）">S6</a>。Top-k 與 top-p 可以一起用 <a class="cite" href="#s6" title="S6｜How to generate text（Hugging Face 部落格）">S6</a>。</p>
+<h2>該用哪一種</h2>
+<p>對開放式生成，top-p 與 top-k 抽樣通常比 greedy 與 beam search 產生更流暢的文字；但沒有一種方法適合所有情況 <a class="cite" href="#s6" title="S6｜How to generate text（Hugging Face 部落格）">S6</a>。</p>
+<h2>容易誤會的地方</h2>
+<ul>
+<li>「同一個問題每次答案不同，代表模型不穩定」：不是，那是抽樣造成的，模型算出的機率分布是一樣的 <a class="cite" href="#s6" title="S6｜How to generate text（Hugging Face 部落格）">S6</a>。</li>
+<li>「Temperature 越高越有創意」只說對一半：分布變平之後，不連貫的機會也變高 <a class="cite" href="#s6" title="S6｜How to generate text（Hugging Face 部落格）">S6</a>。</li>
+</ul>
+<h2>相關頁面</h2>
+<p><a class="wl" href="#language-model">語言模型：預測下一個 token</a>、<a class="wl" href="#embedding-position">Embedding 與位置編碼</a>、<a class="wl" href="#transformer-architecture">Transformer 架構全貌</a></p></div>
+<div class="panels"><section class="panel"><h2>這頁引用的來源</h2><ul><li><a href="#s1">S1｜Attention Is All You Need</a></li><li><a href="#s2">S2｜The Illustrated Transformer</a></li><li><a href="#s3">S3｜The Illustrated GPT-2</a></li><li><a href="#s6">S6｜How to generate text（Hugging Face 部落格）</a></li></ul></section><section class="panel"><h2>用在簡報的哪幾張</h2><ul><li><a href="https://claude.ai/artifact/5Kr98s8iUa5NQmZ6Zee9NU#slide-15">第 15 張　解碼策略</a></li><li><a href="https://claude.ai/artifact/5Kr98s8iUa5NQmZ6Zee9NU#slide-16">第 16 張　小測驗</a></li><li><a href="https://claude.ai/artifact/5Kr98s8iUa5NQmZ6Zee9NU#slide-17">第 17 張　總結</a></li></ul></section><section class="panel"><h2>連到這頁的頁面</h2><ul><li><a href="#embedding-position">Embedding 與位置編碼</a></li><li><a href="#language-model">語言模型：預測下一個 token</a></li><li><a href="#s1">S1｜Attention Is All You Need</a></li><li><a href="#s2">S2｜The Illustrated Transformer</a></li><li><a href="#s3">S3｜The Illustrated GPT-2</a></li><li><a href="#s6">S6｜How to generate text（Hugging Face 部落格）</a></li><li><a href="#transformer-architecture">Transformer 架構全貌</a></li></ul></section></div>
+</article><article id="page-s1" data-page="s1" hidden>
+<p class="badge source">來源頁</p>
+<h1>S1｜Attention Is All You Need</h1>
+<p class="summary">2017 年提出 Transformer 的原始論文，是架構、公式與實驗數字的第一手來源。</p>
+<p class="srcmeta">論文 · Vaswani 等 8 位作者 · 2017-06-12 · <a href="https://arxiv.org/abs/1706.03762">原文連結</a></p>
+<div class="content"><h2>這篇在講什麼</h2>
+<p>提出 Transformer：一個完全不使用遞迴（RNN）與卷積（CNN）、只靠注意力機制的序列轉換模型，並在英德、英法機器翻譯上取得當時最佳成績，而且訓練更快。</p>
+<h2>重點事實</h2>
+<p><strong>動機</strong></p>
+<ul>
+<li>RNN（LSTM、GRU）必須依序處理 token，單一訓練樣本內無法平行運算，序列越長成本越高。</li>
+<li>以 CNN 為基礎的模型比較能平行，但要關聯兩個位置所需的運算數會隨距離增加，遠距離依賴較難學。</li>
+<li>Transformer 完全拿掉遞迴與卷積，任意兩個位置之間只需常數次運算就能相連。</li>
+</ul>
+<p><strong>架構</strong></p>
+<ul>
+<li>Encoder 與 decoder 各由 6 層相同的層堆疊而成，模型維度 d_model 為 512。</li>
+<li>Encoder 每層有 2 個子層：多頭自注意力、逐位置的前饋網路。</li>
+<li>Decoder 每層有 3 個子層：遮罩自注意力、對 encoder 輸出的 encoder-decoder 注意力、前饋網路。</li>
+<li>每個子層外都包一條殘差連接，之後接 layer normalization。</li>
+<li>Decoder 的自注意力會被遮罩，讓每個位置看不到後面的位置；再加上輸出向右位移一格，確保生成是自回歸的。</li>
+</ul>
+<p><strong>注意力</strong></p>
+<ul>
+<li>Scaled dot-product attention 的公式是 softmax(QKᵀ / √d_k) · V。</li>
+<li>除以 √d_k 的理由：d_k 很大時內積數值會變大，把 softmax 推到梯度極小的區域。</li>
+<li>多頭注意力使用 8 個平行的頭，每個頭把 query、key、value 投影到 64 維（512 除以 8）。各頭輸出串接後再投影一次，總計算量與單頭全維度相近。</li>
+<li>多頭讓模型能同時從不同的表示子空間、不同位置擷取資訊。</li>
+<li>多頭注意力在模型中有三種用法：encoder 自注意力（每個位置看前一層所有位置）、decoder 遮罩自注意力（只看目前與之前的位置）、encoder-decoder 注意力（query 來自 decoder，key 與 value 來自 encoder 輸出）。</li>
+</ul>
+<p><strong>其他元件</strong></p>
+<ul>
+<li>前饋網路對每個位置獨立套用，內層維度 2048，輸入輸出維度 512。</li>
+<li>輸入與輸出的 embedding 層，以及 softmax 前的線性層，共用同一個權重矩陣。</li>
+<li>因為沒有遞迴與卷積，必須把位置資訊加到輸入 embedding 上。論文用不同頻率的 sin 與 cos 函數；作者也試過用學習的位置 embedding，結果幾乎相同。</li>
+</ul>
+<p><strong>為什麼用自注意力（論文表 1）</strong></p>
+<ul>
+<li>自注意力：每層複雜度 O(n²·d)，序列運算 O(1)，最長路徑 O(1)。</li>
+<li>遞迴層：每層複雜度 O(n·d²)，序列運算 O(n)，最長路徑 O(n)。</li>
+<li>當序列長度 n 小於表示維度 d 時（句子層級常見），自注意力每層比遞迴層快。</li>
+</ul>
+<p><strong>訓練與結果</strong></p>
+<ul>
+<li>英德資料約 450 萬句對，用 BPE，共享詞彙約 37,000 個 token。英法資料 3,600 萬句，詞彙 32,000。</li>
+<li>硬體是一台裝有 8 顆 NVIDIA P100 GPU 的機器。Base 模型訓練 100,000 步約 12 小時；big 模型訓練 300,000 步約 3.5 天。</li>
+<li>學習率先線性暖身 4,000 步再衰減。Base 模型 dropout 為 0.1，label smoothing 為 0.1。</li>
+<li>Base 模型約 6,500 萬參數，英德 BLEU 27.3、英法 BLEU 38.1。</li>
+<li>Big 模型約 2.13 億參數、16 個頭，英德 BLEU 28.4、英法 BLEU 41.8。Big 模型在英德上比先前最佳結果（含 ensemble）高出超過 2 BLEU。</li>
+<li>推論時使用 beam search，beam size 為 4。</li>
+</ul>
+<h2>更新了哪些 Wiki 頁面</h2>
+<p><a class="wl" href="#why-transformer">為什麼 Transformer 取代了 RNN</a>、<a class="wl" href="#transformer-architecture">Transformer 架構全貌</a>、<a class="wl" href="#self-attention">自注意力（Self-Attention）</a>、<a class="wl" href="#multi-head-attention">多頭注意力（Multi-Head Attention）</a>、<a class="wl" href="#embedding-position">Embedding 與位置編碼</a>、<a class="wl" href="#tokenization">Token 與 BPE 斷詞</a>、<a class="wl" href="#decoding">解碼策略：從機率到文字</a></p>
+<h2>讀這篇要注意</h2>
+<ul>
+<li>英法 big 模型的 BLEU 在摘要與表 2 是 41.8，但結果章節內文寫 41.0，來源自己不一致。見 <a class="wl" href="#open-questions">來源之間的不一致與未解問題</a>。</li>
+<li>這次抓取的頁面在句法剖析實驗（6.3 節）之前被截斷，那一段沒有進入 Wiki。</li>
+</ul></div>
+<div class="panels"><section class="panel"><h2>用在簡報的哪幾張</h2><ul><li><a href="https://claude.ai/artifact/5Kr98s8iUa5NQmZ6Zee9NU#slide-18">第 18 張　延伸閱讀</a></li></ul></section><section class="panel"><h2>連到這頁的頁面</h2><ul><li><a href="#decoding">解碼策略：從機率到文字</a></li><li><a href="#embedding-position">Embedding 與位置編碼</a></li><li><a href="#multi-head-attention">多頭注意力（Multi-Head Attention）</a></li><li><a href="#self-attention">自注意力（Self-Attention）</a></li><li><a href="#tokenization">Token 與 BPE 斷詞</a></li><li><a href="#transformer-architecture">Transformer 架構全貌</a></li><li><a href="#why-transformer">為什麼 Transformer 取代了 RNN</a></li></ul></section></div>
+</article><article id="page-s2" data-page="s2" hidden>
+<p class="badge source">來源頁</p>
+<h1>S2｜The Illustrated Transformer</h1>
+<p class="summary">Jay Alammar 的圖解文章，用翻譯例子一步步拆解原始 Transformer，是直覺與例子的主要來源。</p>
+<p class="srcmeta">部落格文章 · Jay Alammar · 2018-06-27 · <a href="https://jalammar.github.io/illustrated-transformer/">原文連結</a></p>
+<div class="content"><h2>這篇在講什麼</h2>
+<p>把原始 Transformer 當成一個「輸入一句話、輸出翻譯」的黑盒子，再逐層打開：encoder 堆疊、decoder 堆疊、自注意力的逐步計算、多頭、位置編碼、最後的線性層與 softmax，以及訓練時怎麼比較輸出與正解。</p>
+<h2>重點事實</h2>
+<p><strong>整體結構</strong></p>
+<ul>
+<li>模型內部是一個編碼元件與一個解碼元件，各是 6 個 encoder、6 個 decoder 的堆疊；文章提到 6 不是唯一可行的數字。</li>
+<li>所有 encoder 結構相同但權重不共用。每個 encoder 有自注意力與前饋網路兩個子層；decoder 在兩者之間多一層 encoder-decoder 注意力。</li>
+<li>每個輸入詞先變成 512 維的 embedding。只有最底層 encoder 收到 embedding，其上各層收到下一層的輸出。</li>
+<li>各個詞在 encoder 中走各自的路徑，只有在自注意力層彼此相依，所以前饋網路可以對各位置平行計算。</li>
+</ul>
+<p><strong>自注意力的直覺</strong></p>
+<ul>
+<li>例句：「The animal didn't cross the street because it was too tired.」it 指的是 animal 還是 street？自注意力讓模型在編碼 it 時去看其他位置，把 it 與 animal 關聯起來。</li>
+</ul>
+<p><strong>逐步計算（文章分成 6 步）</strong></p>
+<ul>
+<li>第 1 步：每個 embedding 乘上訓練出的權重矩陣，得到 Query、Key、Value 三個向量，維度是 64，比 512 維的 embedding 小。</li>
+<li>第 2 步：用目前這個詞的 query 與每個詞的 key 做內積，得到分數。</li>
+<li>第 3、4 步：把分數除以 8（key 維度 64 的平方根）讓梯度更穩定，再做 softmax，使分數為正且總和為 1。</li>
+<li>第 5 步：每個 value 向量乘上自己的 softmax 分數，不相關的詞會被縮到接近零。</li>
+<li>第 6 步：把加權後的 value 向量加總，就是這個位置的自注意力輸出。</li>
+<li>矩陣形式：把所有 embedding 疊成矩陣 X，第 2 到第 6 步可以濃縮成一條公式。</li>
+</ul>
+<p><strong>多頭注意力</strong></p>
+<ul>
+<li>文章用 8 個頭，每個頭有各自隨機初始化的 Q/K/V 權重矩陣。</li>
+<li>兩個好處：模型能關注不同位置；擁有多個表示子空間。</li>
+<li>8 個頭各產生一個輸出矩陣，串接後再乘上一個額外的權重矩陣，變成前饋層能接受的單一矩陣。</li>
+<li>例子中編碼 it 時，一個頭主要關注 the animal，另一個頭關注 tired。</li>
+</ul>
+<p><strong>位置編碼、殘差</strong></p>
+<ul>
+<li>自注意力本身不知道詞序，所以在每個輸入 embedding 上加一個位置編碼向量。</li>
+<li>文章圖示的 Tensor2Tensor 實作把 sin 與 cos 各放一半再串接；論文的做法是交錯排列。文章在 2020 年 7 月的更新中說明了這個差別。</li>
+<li>每個子層外都有殘差連接，之後接 layer normalization；decoder 也一樣。</li>
+</ul>
+<p><strong>Decoder 與輸出</strong></p>
+<ul>
+<li>最上層 encoder 的輸出會轉成一組 K、V 注意力向量，供每個 decoder 的 encoder-decoder 注意力層使用。</li>
+<li>解碼是逐步的：每一步輸出一個元素，再把它餵回最底層 decoder，直到出現結束符號。</li>
+<li>Decoder 的自注意力只能看較早的位置；未來位置在 softmax 前被設為負無限大。</li>
+<li>Decoder 堆疊輸出一個向量，線性層把它投影成 logits 向量，每個詞彙一格（文中例子是 10,000 個英文詞），softmax 再轉成機率，機率最高的詞被選為這一步的輸出。</li>
+</ul>
+<p><strong>訓練</strong></p>
+<ul>
+<li>訓練時走同樣的前向流程，但把輸出與標註的正確答案比較。正解用 one-hot 向量表示。</li>
+<li>一開始輸出分布是亂的，反向傳播調整權重讓它靠近目標；比較兩個分布可參考 cross-entropy 與 KL divergence。</li>
+<li>實際的詞彙量大約 30,000 到 50,000。</li>
+<li>Greedy decoding 每一步只留機率最高的詞；beam search 同時保留多個候選（文中例子 beam size 為 2）。</li>
+</ul>
+<h2>更新了哪些 Wiki 頁面</h2>
+<p><a class="wl" href="#self-attention">自注意力（Self-Attention）</a>、<a class="wl" href="#multi-head-attention">多頭注意力（Multi-Head Attention）</a>、<a class="wl" href="#transformer-architecture">Transformer 架構全貌</a>、<a class="wl" href="#embedding-position">Embedding 與位置編碼</a>、<a class="wl" href="#pretraining-finetuning">預訓練與微調</a>、<a class="wl" href="#decoding">解碼策略：從機率到文字</a></p>
+<h2>讀這篇要注意</h2>
+<ul>
+<li>文章為了好懂，把「詞」和 token 當成同一件事；實際模型處理的是子詞 token，見 <a class="wl" href="#tokenization">Token 與 BPE 斷詞</a>。</li>
+<li>位置編碼的圖是 Tensor2Tensor 版本，與論文的交錯排法不同，見 <a class="wl" href="#open-questions">來源之間的不一致與未解問題</a>。</li>
+</ul></div>
+<div class="panels"><section class="panel"><h2>用在簡報的哪幾張</h2><ul><li><a href="https://claude.ai/artifact/5Kr98s8iUa5NQmZ6Zee9NU#slide-18">第 18 張　延伸閱讀</a></li></ul></section><section class="panel"><h2>連到這頁的頁面</h2><ul><li><a href="#decoding">解碼策略：從機率到文字</a></li><li><a href="#embedding-position">Embedding 與位置編碼</a></li><li><a href="#multi-head-attention">多頭注意力（Multi-Head Attention）</a></li><li><a href="#pretraining-finetuning">預訓練與微調</a></li><li><a href="#self-attention">自注意力（Self-Attention）</a></li><li><a href="#transformer-architecture">Transformer 架構全貌</a></li></ul></section></div>
+</article><article id="page-s3" data-page="s3" hidden>
+<p class="badge source">來源頁</p>
+<h1>S3｜The Illustrated GPT-2</h1>
+<p class="summary">Jay Alammar 圖解 GPT-2，說明 decoder-only 模型如何一次生成一個 token，是「LLM 怎麼寫字」的主要來源。</p>
+<p class="srcmeta">部落格文章 · Jay Alammar · 2019 · <a href="https://jalammar.github.io/illustrated-gpt2/">原文連結</a></p>
+<div class="content"><h2>這篇在講什麼</h2>
+<p>接續 S2，把焦點從翻譯用的 encoder-decoder 移到只用 decoder 區塊的 GPT-2：什麼是語言模型、GPT-2 與 BERT 的差別、遮罩自注意力，以及 token 如何一路流過堆疊變成下一個字的分數。</p>
+<h2>重點事實</h2>
+<p><strong>語言模型</strong></p>
+<ul>
+<li>語言模型做的事是：給定前面的文字，預測下一個詞。手機鍵盤的選字建議就是日常例子。</li>
+<li>GPT-2 原理相同，但大得多。作者使用的鍵盤 SwiftKey 約佔 78 MB，最小的 GPT-2 光參數就要約 500 MB。</li>
+</ul>
+<p><strong>GPT-2 的規模</strong></p>
+<ul>
+<li>訓練資料是 WebText，OpenAI 研究人員從網路爬下來約 40 GB 的文字。</li>
+<li>最小的模型每個 token 的 embedding 是 768 維，有 12 個注意力頭。</li>
+<li>詞彙約 50,000 個，可處理最多 1,024 個 token 的上下文。</li>
+<li>最大的版本約是最小版本的 13 倍大。</li>
+<li>作者從程式碼數出約 1.24 億參數，官方數字是 1.17 億，他不確定差異原因。</li>
+</ul>
+<p><strong>三種區塊</strong></p>
+<ul>
+<li>Encoder 區塊（原始 Transformer）：自注意力加前饋網路。</li>
+<li>Decoder 區塊（原始 Transformer）：多一層去看 encoder 輸出的注意力；自注意力有遮罩，看不到未來的 token。</li>
+<li>Decoder-only 區塊（GPT-2 使用）：拿掉看 encoder 的那一層，只剩遮罩自注意力與前饋網路。</li>
+</ul>
+<p><strong>BERT 與 GPT-2</strong></p>
+<ul>
+<li>BERT 用 encoder 區塊，GPT-2 用 decoder 區塊。</li>
+<li>GPT-2 是自回歸的：一次生成一個 token，新 token 接到輸入後面再跑下一步。BERT 不是。</li>
+<li>取捨：BERT 放棄自回歸，換來能同時使用一個詞左右兩側的上下文。</li>
+<li>BERT 把詞換成 [mask] 來遮住；GPT-2 則是在注意力計算裡擋掉未來位置。</li>
+</ul>
+<p><strong>生成流程</strong></p>
+<ul>
+<li>從起始 token 開始，流過所有區塊得到一個向量，再對整個詞彙打分數。選出的 token 接回輸入，重複這個過程。</li>
+<li>已經處理過的 token，其表示不會因為後來新增的 token 而重算。</li>
+<li>生成到 1,024 個 token 上限或出現結束 token 時停止。</li>
+<li>top-k 設為 1 就是永遠選分數最高的詞，容易陷入重複迴圈；文章舉 top-k 為 40 當折衷，從分數最高的 40 個詞中依分數抽樣。</li>
+</ul>
+<p><strong>Embedding 與位置</strong></p>
+<ul>
+<li>模型在 token embedding 矩陣中查出每個輸入 token 的向量，矩陣每一列對應一個詞彙。</li>
+<li>位置編碼矩陣為 1,024 個位置各提供一個向量，加到 token embedding 上，讓模型知道順序。</li>
+</ul>
+<p><strong>遮罩自注意力與堆疊</strong></p>
+<ul>
+<li>自注意力三步驟：建立 query、key、value；用 query 對各 key 打分；依分數加總 value。</li>
+<li>遮罩版只差在打分那一步：未來 token 的分數在 softmax 前被設成極大的負數，權重變成零。</li>
+<li>每個區塊先做遮罩自注意力再做前饋網路；前饋網路先擴張到模型維度的 4 倍（小模型為 3,072）再投影回來。</li>
+<li>每個區塊有自己的權重，但 embedding 矩陣全模型共用。最上層輸出的向量乘上 embedding 矩陣，得到每個詞彙的分數。</li>
+</ul>
+<p><strong>其他</strong></p>
+<ul>
+<li>GPT-2 用 byte pair encoding 建立詞彙，所以 token 常常是詞的一部分而不是整個詞。</li>
+<li>Decoder-only 架構也用在翻譯、摘要、音樂生成。有研究先以語言模型預訓練 decoder-only 模型，再微調做摘要，在資料有限時勝過預訓練的 encoder-decoder。</li>
+</ul>
+<h2>更新了哪些 Wiki 頁面</h2>
+<p><a class="wl" href="#language-model">語言模型：預測下一個 token</a>、<a class="wl" href="#model-families">三大模型家族：BERT、GPT、T5</a>、<a class="wl" href="#self-attention">自注意力（Self-Attention）</a>、<a class="wl" href="#embedding-position">Embedding 與位置編碼</a>、<a class="wl" href="#tokenization">Token 與 BPE 斷詞</a>、<a class="wl" href="#decoding">解碼策略：從機率到文字</a>、<a class="wl" href="#pretraining-finetuning">預訓練與微調</a>、<a class="wl" href="#multi-head-attention">多頭注意力（Multi-Head Attention）</a></p>
+<h2>讀這篇要注意</h2>
+<ul>
+<li>文章沒有在內文寫出 medium、large、XL 各版本的層數與維度（只在圖裡），所以 Wiki 不記這些數字。</li>
+<li>小模型參數量有 1.17 億與 1.24 億兩種說法，見 <a class="wl" href="#open-questions">來源之間的不一致與未解問題</a>。</li>
+</ul></div>
+<div class="panels"><section class="panel"><h2>用在簡報的哪幾張</h2><ul><li><a href="https://claude.ai/artifact/5Kr98s8iUa5NQmZ6Zee9NU#slide-18">第 18 張　延伸閱讀</a></li></ul></section><section class="panel"><h2>連到這頁的頁面</h2><ul><li><a href="#decoding">解碼策略：從機率到文字</a></li><li><a href="#embedding-position">Embedding 與位置編碼</a></li><li><a href="#language-model">語言模型：預測下一個 token</a></li><li><a href="#model-families">三大模型家族：BERT、GPT、T5</a></li><li><a href="#multi-head-attention">多頭注意力（Multi-Head Attention）</a></li><li><a href="#pretraining-finetuning">預訓練與微調</a></li><li><a href="#self-attention">自注意力（Self-Attention）</a></li><li><a href="#tokenization">Token 與 BPE 斷詞</a></li></ul></section></div>
+</article><article id="page-s4" data-page="s4" hidden>
+<p class="badge source">來源頁</p>
+<h1>S4｜Hugging Face LLM Course：How do Transformers work?</h1>
+<p class="summary">Hugging Face 課程第 1 章第 4 節，提供模型家族、預訓練與微調、名詞定義等全景觀念。</p>
+<p class="srcmeta">線上課程 · Hugging Face · 持續更新（2026-11-17 讀取） · <a href="https://huggingface.co/learn/llm-course/chapter1/4">原文連結</a></p>
+<div class="content"><h2>這篇在講什麼</h2>
+<p>用不含數學的方式介紹 Transformer 模型的歷史、三大家族、它們都是以自監督方式訓練的語言模型、預訓練與微調的關係，以及 encoder、decoder、注意力層各自的角色。</p>
+<h2>重點事實</h2>
+<p><strong>時間軸（課程列出的代表性模型）</strong></p>
+<ul>
+<li>2017 年 6 月：Transformer 架構問世，原始研究聚焦在翻譯。</li>
+<li>2018 年 6 月：GPT，第一個預訓練的 Transformer 模型。</li>
+<li>2018 年 10 月：BERT，為了產生更好的句子表示而設計的大型預訓練模型。</li>
+<li>2019 年 2 月：GPT-2，更大更好的 GPT，完整版一開始因倫理顧慮沒有公開。</li>
+<li>2019 年 10 月：T5，多任務的 sequence-to-sequence Transformer。</li>
+<li>2020 年 5 月：GPT-3，更大的 GPT-2，不需微調就能做許多任務（zero-shot）。</li>
+<li>2022 年 1 月：InstructGPT，訓練成更能遵循指令的 GPT-3。</li>
+<li>2023 年 1 月：Llama。2023 年 3 月：Mistral。2024 年 5 月：Gemma 2。2024 年 11 月：SmolLM2，給行動與邊緣裝置用的小模型。</li>
+<li>課程說明這份清單只是舉例，並不完整。</li>
+</ul>
+<p><strong>三大家族</strong></p>
+<ul>
+<li>GPT 類（自回歸）：根據前文一次生成一個 token。</li>
+<li>BERT 類（自編碼）：建立對輸入文字的理解，通常用遮住詞的方式訓練。</li>
+<li>T5 類（sequence-to-sequence）：把一個輸入序列對應到一個輸出序列。</li>
+</ul>
+<p><strong>都是語言模型</strong></p>
+<ul>
+<li>上述模型都是在大量原始文字上訓練的語言模型，訓練方式是自監督：訓練目標由輸入自動算出，不需要人工標註。</li>
+<li>這樣的模型學到語言的統計規律，但要經過調整才對特定任務有用。</li>
+<li>Causal language modeling：根據前面的詞預測下一個詞，輸出只依賴過去與現在。</li>
+<li>Masked language modeling：預測句中被遮住的詞，可以用到兩側的上下文。</li>
+</ul>
+<p><strong>模型很大</strong></p>
+<ul>
+<li>一般而言，更好的表現來自更大的模型與更多的資料。訓練大模型耗時、耗算力，也有可觀的環境成本；分享訓練好的權重能降低整個社群的成本與碳足跡。</li>
+</ul>
+<p><strong>預訓練、微調、遷移學習</strong></p>
+<ul>
+<li>預訓練：從隨機初始化的權重開始，在非常大的資料上從頭訓練，可能要好幾週。</li>
+<li>微調：拿預訓練好的模型，在較小、任務專屬、有人工標註的資料上繼續訓練。</li>
+<li>遷移學習：預訓練學到的知識轉移到新任務上。</li>
+<li>微調比較划算的原因：預訓練模型已具備與目標任務相通的語言知識；需要的資料少得多；時間與資源較少；通常比從頭訓練效果好。</li>
+</ul>
+<p><strong>架構角色</strong></p>
+<ul>
+<li>Encoder：接收輸入並建立它的表示，重在理解。</li>
+<li>Decoder：利用 encoder 的表示與其他輸入來生成目標序列，重在生成。</li>
+<li>Encoder-only 適合理解型任務（句子分類、命名實體辨識）；decoder-only 適合生成型任務（文字生成）；encoder-decoder 適合需要輸入的生成任務（翻譯、摘要）。</li>
+</ul>
+<p><strong>注意力層</strong></p>
+<ul>
+<li>注意力層讓模型在處理每個詞的表示時，特別關注句中某些詞、忽略其他詞。</li>
+<li>例子：把「You like this course」翻成法文時，翻 like 需要注意 You（法文動詞變化取決於主詞）；翻 this 需要注意 course（法文用字隨名詞陰陽性改變）。</li>
+<li>原始架構中，encoder 的注意力可以看整句；decoder 只能看已經生成的詞。訓練時為了效率把整個目標句餵給 decoder，但遮住未來的詞。</li>
+</ul>
+<p><strong>名詞</strong></p>
+<ul>
+<li>Architecture：模型的骨架，定義每一層與每個運算，例如 BERT。</li>
+<li>Checkpoint：載入某個架構的一組訓練好的權重，例如 bert-base-cased。</li>
+<li>Model：泛稱，兩者都可以指。</li>
+</ul>
+<h2>更新了哪些 Wiki 頁面</h2>
+<p><a class="wl" href="#model-families">三大模型家族：BERT、GPT、T5</a>、<a class="wl" href="#pretraining-finetuning">預訓練與微調</a>、<a class="wl" href="#language-model">語言模型：預測下一個 token</a>、<a class="wl" href="#self-attention">自注意力（Self-Attention）</a></p>
+<h2>讀這篇要注意</h2>
+<ul>
+<li>這是持續更新的線上課程，時間軸會隨版本增加新模型；Wiki 記的是 2026-11-17 讀到的版本。</li>
+<li>本節的 sequence-to-sequence 家族只以 T5 為代表。</li>
+</ul></div>
+<div class="panels"><section class="panel"><h2>用在簡報的哪幾張</h2><ul><li><a href="https://claude.ai/artifact/5Kr98s8iUa5NQmZ6Zee9NU#slide-18">第 18 張　延伸閱讀</a></li></ul></section><section class="panel"><h2>連到這頁的頁面</h2><ul><li><a href="#language-model">語言模型：預測下一個 token</a></li><li><a href="#model-families">三大模型家族：BERT、GPT、T5</a></li><li><a href="#pretraining-finetuning">預訓練與微調</a></li><li><a href="#self-attention">自注意力（Self-Attention）</a></li></ul></section></div>
+</article><article id="page-s5" data-page="s5" hidden>
+<p class="badge source">來源頁</p>
+<h1>S5｜Hugging Face LLM Course：Byte-Pair Encoding tokenization</h1>
+<p class="summary">Hugging Face 課程第 6 章第 5 節，用玩具語料示範 BPE 如何學出子詞詞彙。</p>
+<p class="srcmeta">線上課程 · Hugging Face · 持續更新（2026-11-17 讀取） · <a href="https://huggingface.co/learn/llm-course/chapter6/5">原文連結</a></p>
+<div class="content"><h2>這篇在講什麼</h2>
+<p>說明 BPE 斷詞演算法的來源、訓練步驟，並用一個五個單字的玩具語料完整走一遍合併過程，最後說明新文字如何套用學到的合併規則。</p>
+<h2>重點事實</h2>
+<p><strong>來源與使用</strong></p>
+<ul>
+<li>BPE 最初是文字壓縮演算法，後來 OpenAI 在預訓練 GPT 時把它用於斷詞。</li>
+<li>使用 BPE 的模型包括 GPT、GPT-2、RoBERTa、BART、DeBERTa。</li>
+</ul>
+<p><strong>訓練步驟</strong></p>
+<ul>
+<li>先正規化、預先切成單字，計算每個單字出現次數。</li>
+<li>建立基礎詞彙：寫出這些單字所用到的所有符號。</li>
+<li>把每個單字拆成單一符號的序列。</li>
+<li>統計所有相鄰符號對的出現次數（依單字頻率加權）。</li>
+<li>把最常出現的一對合併成新 token，加入詞彙，並取代語料中所有出現處。</li>
+<li>重複統計與合併，直到詞彙達到目標大小。每次合併都存成一條規則，之後依學到的順序套用。</li>
+</ul>
+<p><strong>玩具例子</strong></p>
+<ul>
+<li>語料與次數：hug 出現 10 次、pug 5 次、pun 12 次、bun 4 次、hugs 5 次。</li>
+<li>基礎詞彙有 7 個符號：b、g、h、n、p、s、u。</li>
+<li>一開始 (h, u) 出現 15 次，但 (u, g) 出現 20 次（來自 hug、pug、hugs），所以第 1 次合併是 u + g → ug。</li>
+<li>第 2 次合併：(u, n) 出現 16 次，成為最常見的一對，u + n → un。</li>
+<li>第 3 次合併：(h, ug) 出現 15 次，h + ug → hug。</li>
+<li>3 次合併後詞彙共 10 個 token：b、g、h、n、p、s、u、ug、un、hug。</li>
+</ul>
+<p><strong>Byte-level BPE</strong></p>
+<ul>
+<li>GPT-2 與 RoBERTa 的 tokenizer 把文字看成 byte 而不是 Unicode 字元，基礎詞彙只有 256 個（每種 byte 一個），任何字元都能表示，不會出現未知 token。</li>
+</ul>
+<p><strong>對新文字斷詞</strong></p>
+<ul>
+<li>正規化、切成單字、拆成字元，再依學到的順序套用合併規則。</li>
+<li>用上面 3 條規則：bug 會變成 [b, ug]；mug 會變成 [UNK, ug]，因為 m 不在基礎詞彙中；thug 會變成 [UNK, hug]。</li>
+</ul>
+<h2>更新了哪些 Wiki 頁面</h2>
+<p><a class="wl" href="#tokenization">Token 與 BPE 斷詞</a></p>
+<h2>讀這篇要注意</h2>
+<ul>
+<li>玩具例子用的是字元層級 BPE，所以會出現 [UNK]；GPT-2 實際用的 byte-level 版本不會。兩者不要混在一起講。</li>
+</ul></div>
+<div class="panels"><section class="panel"><h2>用在簡報的哪幾張</h2><ul><li><a href="https://claude.ai/artifact/5Kr98s8iUa5NQmZ6Zee9NU#slide-18">第 18 張　延伸閱讀</a></li></ul></section><section class="panel"><h2>連到這頁的頁面</h2><ul><li><a href="#tokenization">Token 與 BPE 斷詞</a></li></ul></section></div>
+</article><article id="page-s6" data-page="s6" hidden>
+<p class="badge source">來源頁</p>
+<h1>S6｜How to generate text（Hugging Face 部落格）</h1>
+<p class="summary">介紹 greedy、beam search、抽樣、temperature、top-k、top-p 等解碼方法與各自的優缺點。</p>
+<p class="srcmeta">部落格文章 · Hugging Face · 2020-03-01（2023-07 更新） · <a href="https://huggingface.co/blog/how-to-generate">原文連結</a></p>
+<div class="content"><h2>這篇在講什麼</h2>
+<p>模型算出下一個詞的機率之後，「怎麼挑」會大幅影響生成的文字。這篇用 GPT-2 示範幾種主流解碼方法，並比較它們適合的情境。</p>
+<h2>重點事實</h2>
+<p><strong>自回歸生成</strong></p>
+<ul>
+<li>一個詞序列的機率被建模成一連串條件機率的乘積：每個詞的機率都以前面的詞為條件。</li>
+<li>輸出長度不是事先固定的，模型產生結束（EOS）token 時停止。</li>
+</ul>
+<p><strong>Greedy search</strong></p>
+<ul>
+<li>每一步都選機率最高的那個詞。快又簡單，但可能錯過「先選一個機率普通的詞、後面接高機率詞」的更好序列。</li>
+<li>在 GPT-2 示範中，輸出一開始合理，之後開始重複同樣的片語。</li>
+</ul>
+<p><strong>Beam search</strong></p>
+<ul>
+<li>每一步保留機率最高的幾條部分序列（num_beams 條），最後回傳整體機率最高的一條。</li>
+<li>缺點：輸出仍然容易重複；可以加 n-gram 懲罰來減少重複，但要小心它會擋掉合理的重複（例如城市名）。</li>
+<li>適合輸出長度大致可預測的任務，例如機器翻譯與摘要；對話、故事這類開放式生成比較不適合。</li>
+<li>一個論點是：人寫的文字並不總是選高機率的下一個詞，人想看的是有點意外的文字，而 beam search 產生的文字太好預測。</li>
+</ul>
+<p><strong>抽樣（sampling）</strong></p>
+<ul>
+<li>依照條件機率分布隨機抽出下一個詞，所以每次執行結果不同（除非固定隨機種子）。</li>
+<li>結果更多樣，但可能不連貫。</li>
+</ul>
+<p><strong>Temperature</strong></p>
+<ul>
+<li>Temperature 會在抽樣前重新縮放 softmax 分布。調低會讓分布更尖：高機率的詞更可能被選，低機率的詞更不可能。</li>
+<li>示範中 temperature 設為 0.6 時文字較連貫。Temperature 趨近 0 時，抽樣的行為就等同 greedy search。</li>
+</ul>
+<p><strong>Top-K 抽樣</strong></p>
+<ul>
+<li>只保留機率最高的 K 個詞，把機率重新正規化後再抽樣。GPT-2 採用這個方法。示範用的 K 是 50。</li>
+<li>限制：K 是固定的，不會隨分布形狀調整。分布很尖時可能放進差的候選，分布很平時又可能砍掉合理選項。</li>
+</ul>
+<p><strong>Top-p（nucleus）抽樣</strong></p>
+<ul>
+<li>不固定個數，而是選出累積機率剛好達到門檻 p 的最小一組高機率詞，再從中抽樣。</li>
+<li>候選數量每一步都會自動調整：示範中 p 為 0.92 時，第一步需要 9 個詞，第二步只需要 3 個。</li>
+<li>Top-K 與 top-p 可以一起使用。</li>
+</ul>
+<p><strong>結論</strong></p>
+<ul>
+<li>對開放式生成，top-p 與 top-K 抽樣通常比 greedy 與 beam search 產生更流暢的文字。</li>
+<li>沒有一種方法適合所有情況，要依用途選擇。</li>
+</ul>
+<h2>更新了哪些 Wiki 頁面</h2>
+<p><a class="wl" href="#decoding">解碼策略：從機率到文字</a>、<a class="wl" href="#language-model">語言模型：預測下一個 token</a></p>
+<h2>讀這篇要注意</h2>
+<ul>
+<li>文章的示範都是用 GPT-2 這個較早期的模型，重複與不連貫的程度不能直接套到現在的大型模型上；Wiki 只取方法本身的定義與取捨。</li>
+</ul></div>
+<div class="panels"><section class="panel"><h2>用在簡報的哪幾張</h2><ul><li><a href="https://claude.ai/artifact/5Kr98s8iUa5NQmZ6Zee9NU#slide-18">第 18 張　延伸閱讀</a></li></ul></section><section class="panel"><h2>連到這頁的頁面</h2><ul><li><a href="#decoding">解碼策略：從機率到文字</a></li><li><a href="#language-model">語言模型：預測下一個 token</a></li></ul></section></div>
+</article><article id="page-open-questions" data-page="open-questions" hidden>
+<p class="badge meta">維護頁</p>
+<h1>來源之間的不一致與未解問題</h1>
+<p class="summary">ingest 過程中發現的矛盾、缺漏與 Wiki 的處理方式。寫簡報前先看這頁。</p>
+<div class="content"><p>LLM Wiki 的用處之一，是把「讀到的矛盾」留下來而不是悄悄抹平。以下是 ingest 六篇來源時記下的問題與處理方式。</p>
+<h2>數字不一致</h2>
+<p><strong>英法翻譯 BLEU：41.8 或 41.0</strong></p>
+<p><a class="cite" href="#s1" title="S1｜Attention Is All You Need">S1</a> 的摘要與表 2 寫 big 模型英法 BLEU 為 41.8，但結果章節內文寫 41.0。Wiki 採用 41.8（摘要與表格一致），並在 <a class="wl" href="#why-transformer">為什麼 Transformer 取代了 RNN</a> 標註。簡報若引用這個數字要加註，或乾脆不用。</p>
+<p><strong>GPT-2 最小版本的參數量：1.17 億或 1.24 億</strong></p>
+<p><a class="cite" href="#s3" title="S3｜The Illustrated GPT-2">S3</a> 的作者從公開程式碼數出約 1.24 億，官方數字是 1.17 億，他自己也不確定差異原因。Wiki 的概念頁不寫這個數字。</p>
+<h2>圖與論文不同</h2>
+<p><strong>位置編碼的排法</strong></p>
+<p><a class="cite" href="#s2" title="S2｜The Illustrated Transformer">S2</a> 的圖是把 sin 與 cos 各放一半再串接（Tensor2Tensor 的實作），<a class="cite" href="#s1" title="S1｜Attention Is All You Need">S1</a> 論文是交錯排列。兩者都能用，但圖案不同。<a class="wl" href="#embedding-position">Embedding 與位置編碼</a> 只講「用 sin 與 cos」，不畫具體圖案。</p>
+<h2>用語不一致</h2>
+<p><strong>「詞」與 token</strong></p>
+<p><a class="cite" href="#s2" title="S2｜The Illustrated Transformer">S2</a> 與 <a class="cite" href="#s3" title="S3｜The Illustrated GPT-2">S3</a> 為了好懂，常把 word 與 token 當同一件事；<a class="cite" href="#s5" title="S5｜Hugging Face LLM Course：Byte-Pair Encoding tokenization">S5</a> 則清楚說明 token 是子詞。Wiki 的概念頁統一用 token，只有在轉述例句時保留「詞」。</p>
+<p><strong>家族名稱</strong></p>
+<p><a class="cite" href="#s4" title="S4｜Hugging Face LLM Course：How do Transformers work?">S4</a> 用 GPT-like、BERT-like、T5-like；<a class="cite" href="#s3" title="S3｜The Illustrated GPT-2">S3</a> 用 decoder-only、encoder 等區塊名稱。<a class="wl" href="#model-families">三大模型家族：BERT、GPT、T5</a> 用一張表把兩套說法對起來。</p>
+<h2>來源沒說的</h2>
+<ul>
+<li><a class="cite" href="#s3" title="S3｜The Illustrated GPT-2">S3</a> 沒有在內文給出 GPT-2 medium、large、XL 的層數與維度，Wiki 不寫。</li>
+<li><a class="cite" href="#s1" title="S1｜Attention Is All You Need">S1</a> 這次抓取的版本在 6.3 節之前被截斷，句法剖析實驗沒有進入 Wiki。</li>
+<li>六篇來源都沒有涵蓋 2024 年之後的新架構細節（例如新的位置編碼方法），這份 Wiki 的範圍停在「原始 Transformer 與 GPT-2 等級的原理」。</li>
+<li><a class="cite" href="#s6" title="S6｜How to generate text（Hugging Face 部落格）">S6</a> 的示範用 GPT-2，重複與不連貫的程度不能直接套到現在的大模型。</li>
+</ul>
+<h2>本 Wiki 自己加的教學說法</h2>
+<p>以下不是來源原文，是為了教學加的白話，在頁面上都有標明：</p>
+<ul>
+<li><a class="wl" href="#self-attention">自注意力（Self-Attention）</a> 中 Query、Key、Value 的白話解釋（我想找什麼、我是什麼、我能提供什麼）。</li>
+<li><a class="wl" href="#embedding-position">Embedding 與位置編碼</a> 中「狗咬人與人咬狗」的比喻。</li>
+</ul></div>
+<div class="panels"><section class="panel"><h2>連到這頁的頁面</h2><ul><li><a href="#embedding-position">Embedding 與位置編碼</a></li><li><a href="#log">執行紀錄（2026-11-17）</a></li><li><a href="#s1">S1｜Attention Is All You Need</a></li><li><a href="#s2">S2｜The Illustrated Transformer</a></li><li><a href="#s3">S3｜The Illustrated GPT-2</a></li><li><a href="#tokenization">Token 與 BPE 斷詞</a></li><li><a href="#why-transformer">為什麼 Transformer 取代了 RNN</a></li></ul></section></div>
+</article><article id="page-workflow" data-page="workflow" hidden>
+<p class="badge meta">維護頁</p>
+<h1>流程圖：這份 Wiki 與簡報是怎麼做出來的</h1>
+<p class="summary">從討論、取得資料、ingest、lint，到查詢 Wiki、生成簡報、檢查、發布的完整 graph，以及哪些邊會往回走。</p>
+<div class="content"><h2>Graph</h2>
+<div class="graph">
+<div class="g-row"><div class="g-node"><b>N0　討論</b>先和使用者確認主題、資料來源、交付形式，再開始生成</div><div class="g-back"></div></div>
+<div class="g-row"><div class="g-node"><b>N1　取得資料</b>搜尋並讀取來源全文，記下抓取時的限制（例如頁面被截斷）</div><div class="g-back"></div></div>
+<div class="g-row"><div class="g-node loop"><b>N2　Ingest 來源</b>每篇來源寫一頁摘要：重點事實、更新了哪些頁、閱讀注意事項</div><div class="g-back">每篇來源重複一次</div></div>
+<div class="g-row"><div class="g-node loop"><b>N3　更新概念頁</b>把事實整併到概念頁，每一行標上 [S#]；矛盾寫進「不一致」頁</div><div class="g-back">N4 或 N7 失敗時回到這裡</div></div>
+<div class="g-row"><div class="g-node check"><b>N4　Wiki lint</b>L1–L8：連結、引用、數字對得上來源、沒有孤兒頁、每行有出處</div><div class="g-back">不通過 → 回 N3</div></div>
+<div class="g-row"><div class="g-node"><b>N5　查詢 Wiki</b>先讀索引與「不一致」頁，決定教學順序；每張投影片先宣告要用哪些 Wiki 頁</div><div class="g-back"></div></div>
+<div class="g-row"><div class="g-node loop"><b>N6　生成投影片</b>只用被宣告的 Wiki 頁內容寫投影片；示意圖標明是示意</div><div class="g-back">N7 或 N8 失敗時回到這裡</div></div>
+<div class="g-row"><div class="g-node check"><b>N7　簡報對 Wiki 檢查</b>C1–C4 自動檢查，加上逐句人工對讀</div><div class="g-back">投影片寫錯 → 回 N6；Wiki 沒有依據 → 回 N3</div></div>
+<div class="g-row"><div class="g-node check"><b>N8　渲染檢查</b>實際用瀏覽器開每一張，檢查文字有沒有溢出畫面</div><div class="g-back">不通過 → 回 N6</div></div>
+<div class="g-row"><div class="g-node"><b>N9　發布</b>發布 Wiki 與簡報，並把「哪張投影片用了這頁」寫回 Wiki</div><div class="g-back"></div></div>
+</div>
+
+<h2>哪些步驟會重複</h2>
+<ul>
+<li><strong>N2 → N3 → N4</strong> 對每一篇來源各跑一次。一篇來源通常會改到好幾個概念頁，所以每次 ingest 後都重跑 lint。</li>
+<li><strong>N3 ↔ N4</strong>：lint 不通過就回去改概念頁，改完再 lint，直到通過。</li>
+<li><strong>N6 ↔ N7</strong>：投影片檢查不通過時重新生成那一張，不是整份重做。</li>
+<li><strong>N7 → N3</strong>：如果投影片的句子在 Wiki 找不到依據，問題出在上游，要回去補 Wiki（或刪掉那句），再從 N4 往下走。</li>
+<li><strong>N8 → N6</strong>：版面溢出只需要改那一張的排版。</li>
+</ul>
+<h2>每個檢查在查什麼</h2>
+<p><strong>N4　Wiki lint</strong></p>
+<table>
+<thead>
+<tr>
+<th>代號</th>
+<th>規則</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>L1</td>
+<td>每個內部連結都指向存在的頁面</td>
+</tr>
+<tr>
+<td>L2</td>
+<td>概念頁引用的來源存在，而且列在該頁的 sources 欄位</td>
+</tr>
+<tr>
+<td>L3</td>
+<td>sources 欄位列的來源，內文真的有引用</td>
+</tr>
+<tr>
+<td>L4</td>
+<td>概念頁中含數字的每一行都有引用</td>
+</tr>
+<tr>
+<td>L5</td>
+<td>該行的每個數字，都出現在它引用的來源頁裡</td>
+</tr>
+<tr>
+<td>L6</td>
+<td>沒有孤兒頁：每個概念頁至少被一個其他概念頁連結</td>
+</tr>
+<tr>
+<td>L7</td>
+<td>每篇來源至少被一個概念頁引用</td>
+</tr>
+<tr>
+<td>L8</td>
+<td>每一行內容要嘛有引用，要嘛標明是「本 Wiki」自己的說法</td>
+</tr>
+</tbody>
+</table>
+<p><strong>N7　簡報對 Wiki 檢查</strong></p>
+<table>
+<thead>
+<tr>
+<th>代號</th>
+<th>規則</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>C1</td>
+<td>除了封面，每張投影片都宣告引用的 Wiki 頁，而且那些頁存在</td>
+</tr>
+<tr>
+<td>C2</td>
+<td>投影片上的每個數字，都出現在它引用的 Wiki 頁裡</td>
+</tr>
+<tr>
+<td>C3</td>
+<td>每個概念頁至少被一張投影片使用</td>
+</tr>
+<tr>
+<td>C4</td>
+<td>被排除檢查的示意區塊必須寫明理由，並列在報告中</td>
+</tr>
+</tbody>
+</table>
+<p>自動檢查只能對數字與連結。句子的意思有沒有超出 Wiki，仍然要逐句對讀。</p>
+<h2>為什麼這樣設計</h2>
+<ul>
+<li><strong>Wiki 夾在來源與簡報中間。</strong> 簡報不直接讀原始來源，只讀 Wiki。這樣每個說法只需要在 ingest 時查證一次，之後做第二份簡報也能重用。</li>
+<li><strong>檢查盡量往前放。</strong> 錯誤越晚發現，要重做的東西越多。數字與引用在 Wiki 階段就擋住，簡報階段只需要確認「有沒有照 Wiki 寫」。</li>
+<li><strong>失敗時回到出錯的那一層，而不是最近的一層。</strong> 投影片上的錯如果源自 Wiki，只改投影片的話，下一份簡報會再錯一次。</li>
+<li><strong>示意內容明確標示並排除檢查。</strong> 教學需要假想的例子，但不能讓它看起來像來源數據，所以每個示意區塊都要寫理由並出現在檢查報告裡。</li>
+</ul>
+<p>實際執行時每一步的結果記在 <a class="wl" href="#log">執行紀錄（2026-11-17）</a>。</p></div>
+<div class="panels"><section class="panel"><h2>連到這頁的頁面</h2><ul><li><a href="#log">執行紀錄（2026-11-17）</a></li></ul></section></div>
+</article><article id="page-log" data-page="log" hidden>
+<p class="badge meta">維護頁</p>
+<h1>執行紀錄（2026-11-17）</h1>
+<p class="summary">這一次實際執行的逐步紀錄：ingest 了什麼、每次檢查的結果、發現的問題與修正。</p>
+<div class="content"><p>依時間順序記錄。節點代號對應 <a class="wl" href="#workflow">流程圖：這份 Wiki 與簡報是怎麼做出來的</a>。</p>
+<h2>N0　討論</h2>
+<p>和使用者確認四件事後才開始：主題為 Transformer 與 LLM 原理；來源由 AI 上網找公開資料；Wiki 與簡報都發布成網頁；流程與反思據實記錄這次執行。</p>
+<h2>N1　取得資料</h2>
+<p>搜尋 6 次，選定 6 篇並讀取全文：<a class="cite" href="#s1" title="S1｜Attention Is All You Need">S1</a> 到 <a class="cite" href="#s6" title="S6｜How to generate text（Hugging Face 部落格）">S6</a>。挑選原則是一篇原始論文、兩篇圖解、三篇課程與教學文章，分別涵蓋架構、直覺、斷詞、解碼。</p>
+<p>抓取時記下的限制：</p>
+<ul>
+<li><a class="cite" href="#s1" title="S1｜Attention Is All You Need">S1</a> 頁面在 6.3 節之前被截斷。</li>
+<li><a class="cite" href="#s1" title="S1｜Attention Is All You Need">S1</a> 的英法 BLEU 在來源內有 41.8 與 41.0 兩種寫法。</li>
+<li><a class="cite" href="#s3" title="S3｜The Illustrated GPT-2">S3</a> 內文沒有 GPT-2 較大版本的層數與維度。</li>
+</ul>
+<h2>N2　Ingest</h2>
+<p>6 篇來源各寫一頁摘要。過程中修正一處：<a class="cite" href="#s6" title="S6｜How to generate text（Hugging Face 部落格）">S6</a> 的作者欄原本寫了一個人名，但那個名字不在這次讀到的內容裡，是模型憑印象補的，已改回只寫機構名。</p>
+<h2>N3　更新概念頁</h2>
+<p>寫出 10 個概念頁與 1 個 <a class="wl" href="#open-questions">來源之間的不一致與未解問題</a> 頁，把 N1 記下的不一致全部登記進去。</p>
+<h2>N4　Wiki lint</h2>
+<table>
+<thead>
+<tr>
+<th>次數</th>
+<th>結果</th>
+<th>問題</th>
+<th>處理</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>第 1 次</td>
+<td>1 個問題</td>
+<td>L4：<a class="wl" href="#model-families">三大模型家族：BERT、GPT、T5</a> 表格中含「T5」的那一列沒有引用（引用寫在表格後面）</td>
+<td>把引用移到表格前的引導句，並讓表格列可以繼承引導句的引用</td>
+</tr>
+<tr>
+<td>第 2 次</td>
+<td>通過</td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<h2>N5　查詢 Wiki、N6　生成投影片</h2>
+<p>讀索引與 <a class="wl" href="#open-questions">來源之間的不一致與未解問題</a> 後決定：簡報不使用有爭議的英法 BLEU 與 GPT-2 參數量；位置編碼只講概念不畫圖案。共 18 張，每張宣告引用的 Wiki 頁。</p>
+<h2>N7　簡報對 Wiki 檢查</h2>
+<table>
+<thead>
+<tr>
+<th>次數</th>
+<th>自動檢查</th>
+<th>人工對讀</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>第 1 次</td>
+<td>C1–C4 通過；3 個示意區塊被列為排除</td>
+<td>發現 4 句在 Wiki 找不到依據</td>
+</tr>
+<tr>
+<td>第 2 次</td>
+<td>通過</td>
+<td>通過</td>
+</tr>
+</tbody>
+</table>
+<p>人工對讀找到的 4 句：</p>
+<ul>
+<li>總結頁寫「殘差連接讓資訊一路傳上去」。Wiki 只說每個子層外包殘差連接，沒有說它的作用。→ 改投影片（回 N6）。</li>
+<li>「聊天、翻譯、寫程式，底下都是同一個動作」。Wiki 沒有這句。→ 回 N3 補上有來源的說法（decoder-only 模型也能做翻譯與摘要），再改投影片。</li>
+<li>「聊天型 LLM 屬於 decoder-only」。這句來自 <a class="wl" href="#model-families">三大模型家族：BERT、GPT、T5</a> 的摘要，但 6 篇來源都沒有這樣寫。→ 回 N3 改成「GPT 系列屬於 decoder-only」。</li>
+<li>「有限的詞彙就能拼出各種罕見字」。這句來自 <a class="wl" href="#tokenization">Token 與 BPE 斷詞</a>，那一行有別的引用，但這一句本身沒有來源。→ 回 N3 換成玩具例子能支持的說法。</li>
+</ul>
+<p>4 句裡有 3 句的根源在 Wiki（N3），不是在投影片（N6）。</p>
+<p><strong>把檢查往前移：</strong> 因此在 N4 新增規則 L8（每一行要有引用，或標明是 Wiki 自己的說法）。</p>
+<table>
+<thead>
+<tr>
+<th>次數</th>
+<th>結果</th>
+<th>問題</th>
+<th>處理</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>第 3 次（加入 L8 後）</td>
+<td>2 個問題</td>
+<td><a class="wl" href="#embedding-position">Embedding 與位置編碼</a> 與 <a class="wl" href="#tokenization">Token 與 BPE 斷詞</a> 開頭的定義句沒有引用</td>
+<td>補上引用；把「比字元大、比單字小」標為 Wiki 自己的白話</td>
+</tr>
+<tr>
+<td>第 4 次</td>
+<td>通過</td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p>L8 的限制：它以「行」為單位。上面第 4 句所在的那一行因為有別的引用，L8 並沒有抓到，是人工對讀抓到的。句子層級的檢查目前仍靠人工。</p>
+<p><strong>檢查器自我測試：</strong> 故意把投影片上的「78 MB」改成「87 MB」再跑 C2，檢查器有抓到，確認「通過」不是因為檢查器沒在檢查。</p>
+<h2>N8　渲染檢查</h2>
+<p>用無頭瀏覽器實際開啟簡報，逐張檢查有沒有元素超出投影片或壓到出處列，並看過一次縮圖。</p>
+<table>
+<thead>
+<tr>
+<th>次數</th>
+<th>自動檢查</th>
+<th>問題</th>
+<th>處理</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>第 1 次</td>
+<td>18 張中 2 張不通過</td>
+<td>第 15 張的互動示範壓到出處列；第 18 張的出處列太長，換成兩行後超出底部</td>
+<td>回 N6 縮小第 15 張的間距；第 18 張出處改用短標籤</td>
+</tr>
+<tr>
+<td>第 2 次</td>
+<td>18 張全部通過</td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p>看縮圖時另外找到 2 個自動檢查沒抓到的版面問題：第 9 張示意圖最後一個標籤換行、壓到下方說明文字；封面的裝飾圖和標題重疊。兩個都已修正。自動檢查只看「有沒有超出邊界」，抓不到投影片內部元素互相重疊。</p>
+<p>限制：檢查環境用的是系統內建的中文字型，和實際瀏覽器載入的網路字型寬度可能略有不同，換行位置不保證完全一樣。</p>
+<h2>N9　發布</h2>
+<p>Wiki 與簡報各發布成一個網頁。Wiki 的每個概念頁下方列出「用在簡報的哪幾張」，簡報每張下方列出對應的 Wiki 頁，兩邊可以互相點過去。</p></div>
+<div class="panels"><section class="panel"><h2>連到這頁的頁面</h2><ul><li><a href="#workflow">流程圖：這份 Wiki 與簡報是怎麼做出來的</a></li></ul></section></div>
+</article>
+</main>
+</div>
+<script>
+const ids = new Set([...document.querySelectorAll("article")].map(a => a.dataset.page));
+function route() {
+  let id = location.hash.slice(1);
+  if (!ids.has(id)) id = "index";
+  document.querySelectorAll("article").forEach(a => a.hidden = a.dataset.page !== id);
+  document.querySelectorAll("[data-nav]").forEach(a => a.classList.toggle("cur", a.dataset.nav === id));
+  window.scrollTo(0, 0);
+}
+window.addEventListener("hashchange", route);
+route();
+</script>
+</body>
+</html>
